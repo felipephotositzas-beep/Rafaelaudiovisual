@@ -325,6 +325,29 @@ export default function App() {
   useEffect(() => {
     if (typeof document !== 'undefined') {
       document.title = 'rafaelpublicado';
+
+      // Atualiza o favicon da aba do navegador para a logo oficial do Rafael Publicado
+      try {
+        const logoUrl = require('./assets/logo.png');
+        const href = typeof logoUrl === 'string' ? logoUrl : (logoUrl?.default || '/assets/logo.png');
+        
+        let link = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.head.appendChild(link);
+        }
+        link.type = 'image/png';
+        link.href = href;
+
+        let shortcut = document.querySelector("link[rel='shortcut icon']");
+        if (!shortcut) {
+          shortcut = document.createElement('link');
+          shortcut.rel = 'shortcut icon';
+          document.head.appendChild(shortcut);
+        }
+        shortcut.href = href;
+      } catch {}
     }
   }, []);
 
