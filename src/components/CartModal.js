@@ -148,7 +148,7 @@ export default function CartModal({ visible, onClose, onCheckout }) {
                   onPress={onCheckout}
                   activeOpacity={0.88}
                 >
-                  <Text style={s.checkoutBtnText}>Finalizar Compra via Pix</Text>
+                  <Text style={s.checkoutBtnText}>Finalizar Compra</Text>
                   <ArrowRight size={17} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TouchableOpacity, View, Text, StyleSheet, Linking } from 'react-native';
@@ -322,6 +322,12 @@ const LocationEventsWrapped = withLayout(LocationEvents);
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function App() {
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = 'rafaelpublicado';
+    }
+  }, []);
+
   return (
     <CartProvider>
       <NavigationContainer linking={linking}>

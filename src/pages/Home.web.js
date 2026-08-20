@@ -177,15 +177,15 @@ export default function Home() {
             <Text style={[s.heroTitle, isMobile && s.heroTitleMobile]}>
               {isMobile ? (
                 <>
-                  Suas melhores memórias,{' '}
-                  <Text style={s.heroTitleBlue}>eternizadas com qualidade.</Text>
+                  Sejam bem vindos.{'\n'}
+                  <Text style={s.heroTitleBlue}>Rafael Publicado Audiovisual</Text>
+                  {'\n'}– Você primeiro aqui!
                 </>
               ) : (
                 <>
-                  Suas melhores{'\n'}
-                  memórias,{'\n'}
-                  <Text style={s.heroTitleBlue}>eternizadas com{'\n'}</Text>
-                  <Text style={s.heroTitleBlue}>qualidade.</Text>
+                  Sejam bem vindos.{'\n'}
+                  <Text style={s.heroTitleBlue}>Rafael Publicado{'\n'}Audiovisual</Text>{'\n'}
+                  – Você primeiro aqui!
                 </>
               )}
             </Text>
@@ -286,7 +286,7 @@ export default function Home() {
               <Text style={s.howStepNum}>03</Text>
               <Text style={s.howStepName}>Escolha e compre</Text>
               <Text style={s.howStepDesc}>
-                Selecione as fotos e pague via PIX.
+                Selecione as fotos e pague via PIX ou Cartão.
               </Text>
             </View>
 
@@ -298,7 +298,7 @@ export default function Home() {
               <Text style={s.howStepNum}>04</Text>
               <Text style={s.howStepName}>Baixe e compartilhe</Text>
               <Text style={s.howStepDesc}>
-                Download ilimitado em alta resolução.
+                Após o pagamento receba seus arquivos direto no Whatsapp.
               </Text>
             </View>
           </View>
@@ -1002,7 +1002,7 @@ const s = StyleSheet.create({
   searchMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 8,
     marginTop: 8,
   },
@@ -1010,6 +1010,7 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     fontWeight: '500',
+    textAlign: 'center',
   },
 
   // ── EMPTY STATE ───────────────────────────────────────────────────────────
@@ -1062,6 +1063,7 @@ const s = StyleSheet.create({
   cardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 20,
     width: '100%',
   },

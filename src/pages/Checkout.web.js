@@ -679,11 +679,7 @@ export default function Checkout() {
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
                       <>
-                        <Text style={styles.btnText}>
-                          {paymentMethod === 'PIX'
-                            ? 'Gerar Pix de Pagamento'
-                            : `Pagar R$ ${cartTotal.toFixed(2).replace('.', ',')} no Cartão`}
-                        </Text>
+                        <Text style={styles.btnText}>Finalizar Compra</Text>
                         <ArrowRight size={17} color="#FFFFFF" />
                       </>
                     )}

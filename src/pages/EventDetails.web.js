@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Linking,
+  Platform,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import {
@@ -122,34 +123,59 @@ const formatPhone = (phone) => {
 const formatDateFull = (dateStr) => {
   if (!dateStr) return '';
   try {
-    const [year, month, day] = dateStr.split('-');
-    const date = new Date(year, month - 1, day);
-    const weekdays = [
-      'Domingo',
-      'Segunda-feira',
-      'Terça-feira',
-      'Quarta-feira',
-      'Quinta-feira',
-      'Sexta-feira',
-      'Sábado',
-    ];
-    const months = [
-      'Jan',
-      'Fev',
-      'Mar',
-      'Abr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Set',
-      'Out',
-      'Nov',
-      'Dez',
-    ];
-    const weekday = weekdays[date.getDay()];
-    const m = months[date.getMonth()];
-    return `${weekday}, ${parseInt(day, 10)} de ${m} de ${year}`;
+    const raw = String(dateStr).trim();
+    const cleanDate = raw.split('T')[0];
+    const parts = cleanDate.split(/[-/]/);
+    if (parts.length === 3) {
+      let year = parseInt(parts[0], 10);
+      let month = parseInt(parts[1], 10) - 1;
+      let day = parseInt(parts[2], 10);
+      if (parts[0].length <= 2 && parts[2].length === 4) {
+        day = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        year = parseInt(parts[2], 10);
+      }
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) {
+        const weekdays = [
+          'Domingo',
+          'Segunda-feira',
+          'Terça-feira',
+          'Quarta-feira',
+          'Quinta-feira',
+          'Sexta-feira',
+          'Sábado',
+        ];
+        const months = [
+          'Janeiro',
+          'Fevereiro',
+          'Março',
+          'Abril',
+          'Maio',
+          'Junho',
+          'Julho',
+          'Agosto',
+          'Setembro',
+          'Outubro',
+          'Novembro',
+          'Dezembro',
+        ];
+        const weekday = weekdays[d.getDay()];
+        const m = months[d.getMonth()];
+        return `${weekday}, ${day} de ${m} de ${year}`;
+      }
+    }
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      const formatted = d.toLocaleDateString('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+      return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    }
+    return dateStr;
   } catch {
     return dateStr;
   }
@@ -192,10 +218,43 @@ export default function EventDetails() {
   const [isFaceSearchActive, setIsFaceSearchActive] = useState(false);
   const [faceSearchError, setFaceSearchError] = useState('');
   const [isPrivateEvent, setIsPrivateEvent] = useState(false);
+  const photosCacheRef = useRef({});
 
   const { addToCart, removeFromCart, isInCart, initializeCartForEvent } =
     useCart();
   const discountTiers = getProgressiveDiscountTiers(eventData);
+
+  // Prefetch silencioso da próxima página em background
+  const prefetchNextPage = async (nextPage, mediaType) => {
+    if (!id || id === 'undefined') return;
+    const cacheKey = `${id}_${mediaType}_${nextPage}`;
+    if (photosCacheRef.current[cacheKey]) return;
+    try {
+      const res = await fetchPhotos(id, nextPage, mediaType);
+      if (res.ok) {
+        const data = await res.json();
+        let loaded = data.results || [];
+        loaded.sort((a, b) => {
+          const aIsRafael =
+            a.photographer === DEFAULT_PHOTOGRAPHER_ID ||
+            (a.photographer_name &&
+              a.photographer_name.toLowerCase().includes('rafael'));
+          const bIsRafael =
+            b.photographer === DEFAULT_PHOTOGRAPHER_ID ||
+            (b.photographer_name &&
+              b.photographer_name.toLowerCase().includes('rafael'));
+          if (aIsRafael && !bIsRafael) return -1;
+          if (!aIsRafael && bIsRafael) return 1;
+          return 0;
+        });
+        photosCacheRef.current[cacheKey] = {
+          results: loaded,
+          count: data.count || 0,
+          num_pages: data.num_pages || 1,
+        };
+      }
+    } catch {}
+  };
 
   // If we only have slug or eventParam without id, resolve event from API
   useEffect(() => {
@@ -253,13 +312,13 @@ export default function EventDetails() {
     let active = true;
     const loadEvent = async () => {
       try {
-        const response = await fetchEvents();
-        if (!response.ok) return;
-        const data = await response.json();
-        const found = data.results?.find((event) => event.id === id);
-        if (active && found) setEventData(found);
-      } catch (error) {
-        console.warn('loadEvent error:', error);
+        const res = await fetchEventDetail(id);
+        if (res.ok) {
+          const data = await res.json();
+          if (active) setEventData(data);
+        }
+      } catch (e) {
+        console.warn('loadEvent error:', e);
       }
     };
     loadEvent();
@@ -288,12 +347,47 @@ export default function EventDetails() {
       setLoading(false);
       return;
     }
+
+    const cacheKey = `${id}_${mediaType}_${pageNumber}`;
+    const cached = photosCacheRef.current[cacheKey];
+
+    // 🚀 Se estiver em cache, carrega INSTANTANEAMENTE (0 ms)!
+    if (cached) {
+      setPhotos(cached.results);
+      setMediaCounts((current) => ({
+        ...current,
+        [mediaType]: cached.count,
+      }));
+      setNumPages(cached.num_pages);
+      setHasMore(pageNumber < cached.num_pages);
+      setPage(pageNumber);
+      setLoading(false);
+      setLoadingMore(false);
+
+      if (pageNumber !== 1 && typeof window !== 'undefined') {
+        const gridElem = document.getElementById('galeria-fotos-grid');
+        if (gridElem) {
+          gridElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          window.scrollTo({ top: 380, behavior: 'smooth' });
+        }
+      }
+
+      // Prefetch da próxima página em background
+      if (pageNumber < cached.num_pages) {
+        prefetchNextPage(pageNumber + 1, mediaType);
+      }
+      return;
+    }
+
+    // Busca da rede
     if (pageNumber === 1) {
       setLoading(true);
       setIsFaceSearchActive(false);
     } else {
       setLoadingMore(true);
     }
+
     try {
       const res = await fetchPhotos(id, pageNumber, mediaType);
       if (res.ok) {
@@ -315,6 +409,13 @@ export default function EventDetails() {
           return 0;
         });
 
+        // Salva no cache da memória
+        photosCacheRef.current[cacheKey] = {
+          results: loadedPhotos,
+          count: data.count || 0,
+          num_pages: data.num_pages || 1,
+        };
+
         setPhotos(loadedPhotos);
         setMediaCounts((current) => ({
           ...current,
@@ -323,8 +424,19 @@ export default function EventDetails() {
         setNumPages(data.num_pages || 1);
         setHasMore(pageNumber < (data.num_pages || 1));
         setPage(pageNumber);
+
         if (pageNumber !== 1 && typeof window !== 'undefined') {
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          const gridElem = document.getElementById('galeria-fotos-grid');
+          if (gridElem) {
+            gridElem.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            window.scrollTo({ top: 380, behavior: 'smooth' });
+          }
+        }
+
+        // Prefetch da próxima página em background
+        if (pageNumber < (data.num_pages || 1)) {
+          prefetchNextPage(pageNumber + 1, mediaType);
         }
       }
     } catch (err) {
@@ -547,6 +659,7 @@ export default function EventDetails() {
           ]}
           onPress={() => page > 1 && loadPhotosData(page - 1)}
           disabled={page === 1 || loadingMore}
+          activeOpacity={0.75}
         >
           <ChevronLeft
             size={16}
@@ -577,15 +690,20 @@ export default function EventDetails() {
           ]}
           onPress={() => hasMore && loadPhotosData(page + 1)}
           disabled={!hasMore || loadingMore}
+          activeOpacity={0.75}
         >
-          <Text
-            style={[
-              styles.paginationBtnText,
-              !hasMore && styles.paginationBtnTextDisabled,
-            ]}
-          >
-            Próxima
-          </Text>
+          {loadingMore ? (
+            <ActivityIndicator size="small" color="#006BD6" style={{ marginRight: 4 }} />
+          ) : (
+            <Text
+              style={[
+                styles.paginationBtnText,
+                !hasMore && styles.paginationBtnTextDisabled,
+              ]}
+            >
+              Próxima
+            </Text>
+          )}
           <ChevronRight
             size={16}
             color={
@@ -673,9 +791,9 @@ export default function EventDetails() {
               <View style={styles.metaItem}>
                 <CalendarDays size={16} color="#64748B" />
                 <Text style={styles.metaText}>
-                  {eventData?.date
-                    ? formatDateFull(eventData.date)
-                    : 'Data não informada'}
+                  {(eventData?.event_date || eventData?.date || eventData?.rawEvent?.event_date)
+                    ? formatDateFull(eventData.event_date || eventData.date || eventData.rawEvent?.event_date)
+                    : 'Data do evento'}
                 </Text>
               </View>
               <View style={styles.metaItem}>
@@ -967,10 +1085,12 @@ export default function EventDetails() {
           ) : (
             <>
               <View
+                nativeID="galeria-fotos-grid"
                 style={[
                   styles.photoGrid,
                   isMobile && styles.photoGridMobile,
                   viewMode === 'rapida' && styles.photoGridCompact,
+                  loadingMore && { opacity: 0.6 },
                 ]}
               >
                 {filteredPhotos.map((photo, index) =>
