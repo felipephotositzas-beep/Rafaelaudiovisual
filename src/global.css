@@ -1,0 +1,99 @@
+/**
+ * Rafael Publicado Audiovisual - Global Stylesheet (Light Theme)
+ */
+
+:root {
+  /* Cores Base Tema Claro */
+  --background: #F8FAFC;
+  --background-subtle: #F1F5F9;
+  --background-muted: #E2E8F0;
+  
+  --surface: #FFFFFF;
+  --surface-alpha: rgba(255, 255, 255, 0.92);
+  --surface-hover: #F8FAFC;
+  
+  /* Azul da Marca */
+  --primary: #006BD6;
+  --primary-deep: #063A78;
+  --primary-light: #0088FF;
+  --brand-gradient: linear-gradient(135deg, #063A78 0%, #006BD6 55%, #009DFF 100%);
+  
+  /* Textos */
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
+  
+  /* Bordas */
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --border-primary: rgba(0, 107, 214, 0.35);
+  
+  /* Status */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #006BD6;
+  
+  /* Tipografia */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Reset & Global */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  width: 100%;
+  min-height: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  color: var(--text-primary);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* Scrollbar Clean */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

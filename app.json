@@ -1,0 +1,98 @@
+{
+  "expo": {
+    "name": "Rafael Publicado Audiovisual",
+    "slug": "apptopfotos_native",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/topfotos-icon.png",
+    "scheme": "apptopfotosnative",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "icon": "./assets/images/topfotos-icon.png",
+      "bundleIdentifier": "br.com.topfotos.app",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:topfotos.com.br"
+      ],
+      "infoPlist": {
+        "NSCameraUsageDescription": "O aplicativo usa a câmera para localizar suas fotos por reconhecimento facial.",
+        "NSPhotoLibraryUsageDescription": "O aplicativo acessa sua galeria para escolher uma foto e localizar suas imagens no evento."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#020406",
+        "foregroundImage": "./assets/images/topfotos-adaptive-foreground.png",
+        "monochromeImage": "./assets/images/topfotos-adaptive-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "topfotos.com.br",
+              "pathPrefix": "/evento/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
+      "predictiveBackGestureEnabled": false,
+      "package": "br.com.topfotos.app"
+    },
+    "web": {
+      "output": "single",
+      "favicon": "./assets/images/topfotos-icon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#020406",
+          "image": "./assets/images/topfotos-splash.png",
+          "imageWidth": 220
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O aplicativo usa a câmera para localizar suas fotos por reconhecimento facial."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O aplicativo acessa sua galeria para escolher uma foto e localizar suas imagens no evento.",
+          "cameraPermission": "O aplicativo usa a câmera para localizar suas fotos por reconhecimento facial.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "O aplicativo acessa sua galeria para localizar e exibir as mídias escolhidas por você.",
+          "savePhotosPermission": "O aplicativo salva na galeria apenas as fotos e os vídeos comprados por você.",
+          "granularPermissions": []
+        }
+      ],
+      "expo-video"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
