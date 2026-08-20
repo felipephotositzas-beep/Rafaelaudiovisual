@@ -149,13 +149,6 @@ function DesktopHeader({ navigation }) {
 
           <TouchableOpacity
             style={hStyles.navLink}
-            onPress={() => scrollToSection('galerias-destaque')}
-          >
-            <Text style={hStyles.navLinkText}>Preços</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={hStyles.navLink}
             onPress={() => scrollToSection('duvidas')}
           >
             <Text style={hStyles.navLinkText}>Dúvidas</Text>

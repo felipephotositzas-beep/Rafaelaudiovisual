@@ -160,7 +160,7 @@ export default function Home() {
     dateBadge: formatDateBadge(ev.event_date),
     title: ev.name,
     location: ev.city || 'Maranhão - MA',
-    photosCount: ev.price ? `R$ ${parseFloat(ev.price).toFixed(2).replace('.', ',')}` : 'Ver fotos',
+    photosCount: 'Ver galeria',
     image: ev.image || 'https://ik.imagekit.io/yg7h35ptj/public/assets/company/banner-default.jpg?tr=w-401,h-401,c-at_max',
     rawEvent: ev,
   }));
@@ -582,15 +582,6 @@ export default function Home() {
                 style={s.footerLinkTouchable}
               >
                 <Text style={s.footerLink}>Galerias</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => scrollToSection('galerias-destaque')}
-                accessible={true}
-                accessibilityRole="link"
-                accessibilityLabel="Preços"
-                style={s.footerLinkTouchable}
-              >
-                <Text style={s.footerLink}>Preços</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => scrollToSection('duvidas')}

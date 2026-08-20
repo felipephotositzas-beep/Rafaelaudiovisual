@@ -29,6 +29,7 @@ import {
   Sparkles,
   ArrowLeft,
   CircleAlert,
+  Lock,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
@@ -42,6 +43,7 @@ import {
   fetchEvents,
   fetchPhotos,
   searchByFace,
+  fetchEventPrivacy,
   DEFAULT_PHOTOGRAPHER_ID,
 } from '../utils/api';
 import { getProgressiveDiscountTiers } from '../utils/progressiveDiscountUtils';
@@ -177,6 +179,7 @@ export default function EventDetails() {
   const [isSearchingFace, setIsSearchingFace] = useState(false);
   const [isFaceSearchActive, setIsFaceSearchActive] = useState(false);
   const [faceSearchError, setFaceSearchError] = useState('');
+  const [isPrivateEvent, setIsPrivateEvent] = useState(false);
 
   const { addToCart, removeFromCart, isInCart, initializeCartForEvent } =
     useCart();
@@ -185,10 +188,24 @@ export default function EventDetails() {
   useEffect(() => {
     if (id) {
       initializeCartForEvent(id);
-      loadPhotosData(1, 'photo');
+      const slug = eventData?.slug || eventParam?.slug;
+      if (slug) {
+        fetchEventPrivacy(slug).then((isPriv) => {
+          setIsPrivateEvent(Boolean(isPriv));
+          if (!isPriv) {
+            loadPhotosData(1, 'photo');
+          } else {
+            setLoading(false);
+            setPhotos([]);
+          }
+        });
+      } else {
+        loadPhotosData(1, 'photo');
+      }
       loadMediaCount('video');
+      loadMediaCount('photo');
     }
-  }, [id]);
+  }, [id, eventData?.slug, eventParam?.slug]);
 
   useEffect(() => {
     if (eventParam || !id) return;
@@ -862,13 +879,35 @@ export default function EventDetails() {
             </TouchableOpacity>
           </View>
 
-          {/* 6. Photo Grid */}
+          {/* 6. Photo Grid or Private Lock Message */}
           {loading ? (
             <View style={styles.loadingBox}>
               <ActivityIndicator size="large" color="#006BD6" />
               <Text style={styles.loadingText}>
                 Carregando fotos da galeria...
               </Text>
+            </View>
+          ) : isPrivateEvent && !isFaceSearchActive ? (
+            <View style={styles.privateEventBox}>
+              <View style={styles.privateLockCircle}>
+                <Lock size={32} color="#006BD6" />
+              </View>
+              <Text style={styles.privateEventTitle}>
+                Galeria com Privacidade Ativada
+              </Text>
+              <Text style={styles.privateEventText}>
+                As fotos deste evento são privadas para segurança e privacidade dos participantes. Para visualizar e comprar suas fotos, utilize o reconhecimento facial acima.
+              </Text>
+              <TouchableOpacity
+                style={styles.btnPrivateAction}
+                onPress={() => setIsCameraVisible(true)}
+                activeOpacity={0.88}
+              >
+                <ScanFace size={18} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.btnPrivateActionText}>
+                  Localizar Minhas Fotos
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : filteredPhotos.length === 0 ? (
             <View style={styles.emptyBox}>
@@ -1433,6 +1472,61 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#64748B',
+    fontSize: 14,
+  },
+  privateEventBox: {
+    paddingVertical: 48,
+    paddingHorizontal: 24,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    marginVertical: 16,
+    maxWidth: 640,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  privateLockCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  privateEventTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  privateEventText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 520,
+  },
+  btnPrivateAction: {
+    backgroundColor: '#006BD6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    marginTop: 8,
+    boxShadow: '0 4px 12px rgba(0, 107, 214, 0.25)',
+  },
+  btnPrivateActionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
     fontSize: 14,
   },
   emptyBox: {

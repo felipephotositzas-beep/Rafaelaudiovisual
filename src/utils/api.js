@@ -70,6 +70,19 @@ export const fetchModalities = () =>
 export const fetchStates = () =>
   fetch(buildUrl('/api/panel/events/states'));
 
+export const fetchEventPrivacy = async (eventSlug) => {
+  if (!eventSlug) return false;
+  try {
+    const res = await fetch(`https://topfotos.com.br/${eventSlug}`);
+    if (!res.ok) return false;
+    const html = await res.text();
+    const match = html.match(/var\s+eventPrivacy\s*=\s*(true|false)/);
+    return match ? match[1] === 'true' : false;
+  } catch {
+    return false;
+  }
+};
+
 // ─── FOTOS ────────────────────────────────────────────────────────────────────
 
 export const fetchPhotos = (eventId, page = 1, mediaType = 'photo', photographerId = DEFAULT_PHOTOGRAPHER_ID) => {

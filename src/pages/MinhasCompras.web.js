@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import { fetchCustomerOrders, fetchOrder, fetchOrderPix } from '../utils/api';
 import { isValidCpf, maskCpf } from '../utils/cpfUtils';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import {
   Colors,
   DarkPalette,
@@ -51,6 +52,7 @@ const resolveUrl = (url) => {
 
 export default function MinhasCompras() {
   const navigation = useNavigation();
+  const { isMobile } = useBreakpoint();
   const [cpf, setCpf] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -283,8 +285,8 @@ export default function MinhasCompras() {
     const isPending = order.status !== 'PAID';
     const isViewingPix = viewingPixOrderId === order.id;
     return (
-      <View key={order.id} style={styles.orderCard}>
-        <View style={styles.orderHeader}>
+      <View key={order.id} style={[styles.orderCard, isMobile && styles.orderCardMobile]}>
+        <View style={[styles.orderHeader, isMobile && styles.orderHeaderMobile]}>
           <View>
             <Text style={styles.orderNumber}>
               Pedido #{order.order_number || order.id?.slice(0, 8)}
@@ -298,9 +300,9 @@ export default function MinhasCompras() {
             ]}
           >
             {isPending ? (
-              <Clock3 size={13} color="#FFB020" />
+              <Clock3 size={13} color="#D97706" />
             ) : (
-              <Check size={13} color="#20C997" />
+              <Check size={13} color="#059669" />
             )}
             <Text
               style={[
@@ -313,7 +315,7 @@ export default function MinhasCompras() {
           </View>
         </View>
 
-        {/* Photos grid preview */}
+        {/* Photos preview scroll */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -352,8 +354,8 @@ export default function MinhasCompras() {
           })}
         </ScrollView>
 
-        <View style={styles.orderFooter}>
-          <View>
+        <View style={[styles.orderFooter, isMobile && styles.orderFooterMobile]}>
+          <View style={styles.orderValueBox}>
             <Text style={styles.orderValue}>
               R${' '}
               {parseFloat(order.total_value || 0)
@@ -367,7 +369,7 @@ export default function MinhasCompras() {
 
           {!isPending && (
             <TouchableOpacity
-              style={styles.downloadButton}
+              style={[styles.downloadButton, isMobile && styles.downloadButtonMobile]}
               onPress={() => handleDownloadOrder(order)}
               activeOpacity={0.88}
             >
@@ -400,7 +402,7 @@ export default function MinhasCompras() {
             {isViewingPix && (
               <View style={styles.pixPanel}>
                 {pixLoading ? (
-                  <ActivityIndicator color="#009DFF" />
+                  <ActivityIndicator color="#006BD6" />
                 ) : pixData ? (
                   <>
                     <PixQrCode pixData={pixData} compact />
@@ -426,14 +428,14 @@ export default function MinhasCompras() {
                       </Text>
                     </TouchableOpacity>
                     <View style={styles.pixAwaitingRow}>
-                      <ActivityIndicator size="small" color="#009DFF" />
+                      <ActivityIndicator size="small" color="#006BD6" />
                       <Text style={styles.pixAwaitingText}>
                         Aguardando confirmação bancária...
                       </Text>
                     </View>
                   </>
                 ) : (
-                  <Text style={{ color: '#FF4D5E', textAlign: 'center' }}>
+                  <Text style={{ color: '#EF4444', textAlign: 'center' }}>
                     Erro ao carregar Pix.
                   </Text>
                 )}
@@ -448,25 +450,28 @@ export default function MinhasCompras() {
   return (
     <ScrollView
       style={styles.page}
-      contentContainerStyle={styles.pageContent}
+      contentContainerStyle={[
+        styles.pageContent,
+        isMobile && styles.pageContentMobile,
+      ]}
     >
-      <View style={styles.pageLayout}>
+      <View style={[styles.pageLayout, isMobile && styles.pageLayoutMobile]}>
         {/* Left: CPF Form */}
-        <View style={styles.leftColumn}>
-          <View style={styles.cpfCard}>
+        <View style={[styles.leftColumn, isMobile && styles.leftColumnMobile]}>
+          <View style={[styles.cpfCard, isMobile && styles.cpfCardMobile]}>
             <View style={styles.cpfCardIconRow}>
-              <ShoppingBag size={22} color="#009DFF" />
+              <ShoppingBag size={22} color="#006BD6" />
               <Text style={styles.sectionTitle}>Minhas Compras</Text>
             </View>
             <Text style={styles.subtitle}>
               Consulte seus pedidos anteriores e baixe seus arquivos originais a
               qualquer momento.
             </Text>
-            <View style={styles.cpfRow}>
+            <View style={[styles.cpfRow, isMobile && styles.cpfRowMobile]}>
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={[styles.input, isMobile && styles.inputMobile]}
                 placeholder="000.000.000-00"
-                placeholderTextColor={DarkPalette.textMuted}
+                placeholderTextColor="#94A3B8"
                 value={cpf}
                 onChangeText={(v) => {
                   setCpf(maskCpf(v));
@@ -479,6 +484,7 @@ export default function MinhasCompras() {
               <TouchableOpacity
                 style={[
                   styles.btnBuscar,
+                  isMobile && styles.btnBuscarMobile,
                   (cpf.replace(/\D/g, '').length < 11 || loading) &&
                     styles.btnDisabled,
                 ]}
@@ -489,7 +495,7 @@ export default function MinhasCompras() {
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Text style={styles.btnText}>Buscar</Text>
+                  <Text style={styles.btnText}>Buscar Pedidos</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -498,7 +504,7 @@ export default function MinhasCompras() {
         </View>
 
         {/* Right: Orders */}
-        <View style={styles.ordersColumn}>
+        <View style={[styles.ordersColumn, isMobile && styles.ordersColumnMobile]}>
           {searched && orders.length > 0 && (
             <>
               {/* Tabs */}
@@ -557,13 +563,13 @@ export default function MinhasCompras() {
           {!searched && !loading && (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <ShoppingBag size={36} color="#009DFF" />
+                <ShoppingBag size={36} color="#006BD6" />
               </View>
               <Text style={styles.emptyStateTitle}>
                 Acesse suas fotos compradas
               </Text>
               <Text style={styles.emptyText}>
-                Informe seu CPF no campo ao lado para consultar o histórico dos seus
+                Informe seu CPF no campo para consultar o histórico dos seus
                 pedidos e baixar os arquivos originais em alta definição.
               </Text>
             </View>
@@ -593,18 +599,34 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 80,
   },
+  pageContentMobile: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 60,
+  },
   pageLayout: {
     flexDirection: 'row',
     gap: 32,
     alignItems: 'flex-start',
   },
+  pageLayoutMobile: {
+    flexDirection: 'column',
+    gap: 16,
+    alignItems: 'stretch',
+  },
   leftColumn: {
-    width: 340,
+    width: 360,
     flexShrink: 0,
+  },
+  leftColumnMobile: {
+    width: '100%',
   },
   ordersColumn: {
     flex: 1,
     minWidth: 0,
+  },
+  ordersColumnMobile: {
+    width: '100%',
   },
 
   // CPF card
@@ -615,6 +637,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+  },
+  cpfCardMobile: {
+    padding: 16,
+    borderRadius: 14,
   },
   cpfCardIconRow: {
     flexDirection: 'row',
@@ -638,7 +664,13 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     alignItems: 'center',
   },
+  cpfRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 10,
+  },
   input: {
+    flex: 1,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
@@ -648,8 +680,12 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     outlineStyle: 'none',
   },
+  inputMobile: {
+    width: '100%',
+    paddingVertical: 12,
+  },
   btnBuscar: {
-    backgroundColor: BrandColors.primary,
+    backgroundColor: '#006BD6',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
     borderRadius: Radius.md,
@@ -657,6 +693,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 48,
     boxShadow: '0 4px 14px rgba(0, 107, 214, 0.3)',
+  },
+  btnBuscarMobile: {
+    width: '100%',
   },
   btnSuccess: {
     backgroundColor: '#10B981',
@@ -695,6 +734,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     fontWeight: FontWeights.semibold,
+    textAlign: 'center',
   },
   tabTextActive: { color: '#006BD6', fontWeight: FontWeights.bold },
 
@@ -708,11 +748,20 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.four,
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
   },
+  orderCardMobile: {
+    padding: 16,
+    borderRadius: 14,
+  },
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: Spacing.four,
+  },
+  orderHeaderMobile: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   orderNumber: {
     fontSize: 16,
@@ -749,10 +798,11 @@ const styles = StyleSheet.create({
   orderPhotoButton: {
     width: 84,
     height: 84,
-    marginRight: Spacing.two,
     borderRadius: Radius.md,
     overflow: 'hidden',
-    backgroundColor: '#F8FAFC',
+    marginRight: Spacing.two,
+    backgroundColor: '#F1F5F9',
+    position: 'relative',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
@@ -761,133 +811,149 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
+
   orderFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Spacing.two,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#E2E8F0',
+    paddingTop: Spacing.three,
+  },
+  orderFooterMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+  },
+  orderValueBox: {
+    gap: 2,
   },
   orderValue: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: FontWeights.extrabold,
     color: '#006BD6',
   },
   orderItems: {
     fontSize: 12,
-    color: '#475569',
-    marginTop: 2,
+    color: '#64748B',
   },
   downloadButton: {
+    backgroundColor: '#006BD6',
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: Radius.md,
-    backgroundColor: BrandColors.primary,
-    boxShadow: '0 4px 14px rgba(0, 107, 214, 0.3)',
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    boxShadow: '0 2px 8px rgba(0, 107, 214, 0.25)',
+  },
+  downloadButtonMobile: {
+    width: '100%',
+    paddingVertical: 12,
   },
   downloadButtonText: {
     color: '#FFFFFF',
-    fontSize: 13,
     fontWeight: FontWeights.bold,
+    fontSize: 13,
   },
+
+  // Pix Panel
   btnPix: {
-    marginTop: Spacing.three,
-    backgroundColor: '#EFF6FF',
-    padding: Spacing.three,
+    backgroundColor: '#006BD6',
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    paddingVertical: Spacing.three,
     alignItems: 'center',
+    marginTop: Spacing.three,
   },
   btnPixText: {
-    color: '#006BD6',
+    color: '#FFFFFF',
     fontWeight: FontWeights.bold,
-    fontSize: 13,
+    fontSize: 14,
   },
   pixPanel: {
-    marginTop: Spacing.three,
-    padding: Spacing.three,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F8FAFC',
     borderRadius: Radius.lg,
+    padding: Spacing.four,
+    marginTop: Spacing.three,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: '#E2E8F0',
   },
   pixCodeBox: {
     backgroundColor: '#FFFFFF',
-    padding: Spacing.three,
     borderRadius: Radius.md,
+    padding: Spacing.three,
+    marginVertical: Spacing.three,
+    width: '100%',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderStyle: 'dashed',
-    marginBottom: Spacing.three,
-    marginTop: Spacing.three,
+    borderColor: '#E2E8F0',
   },
   pixCode: {
-    fontSize: 11,
     color: '#475569',
-    lineHeight: 16,
+    fontSize: 11,
     fontFamily: 'monospace',
+    lineHeight: 16,
   },
   btnPrimaryCopy: {
-    backgroundColor: BrandColors.primary,
-    paddingVertical: 12,
+    backgroundColor: '#006BD6',
     borderRadius: Radius.md,
+    paddingVertical: Spacing.three,
     alignItems: 'center',
+    width: '100%',
   },
   pixAwaitingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    marginTop: 10,
+    marginTop: Spacing.three,
   },
   pixAwaitingText: {
-    color: '#475569',
     fontSize: 12,
+    color: '#64748B',
   },
 
   // Empty state
   emptyState: {
-    paddingVertical: 72,
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: 36,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
   },
   emptyIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: FontWeights.bold,
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
   emptyCard: {
     backgroundColor: '#FFFFFF',
-    padding: Spacing.six,
     borderRadius: Radius.lg,
+    padding: 24,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: FontWeights.bold,
-    color: '#0F172A',
-    marginBottom: Spacing.two,
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#475569',
+    color: '#64748B',
     fontSize: 14,
-    maxWidth: 380,
+    textAlign: 'center',
     lineHeight: 22,
+    maxWidth: 400,
   },
 });
