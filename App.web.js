@@ -25,6 +25,7 @@ import MinhasCompras from './src/pages/MinhasCompras';
 import LocationEvents from './src/pages/LocationEvents';
 import CartModal from './src/components/CartModal';
 import BrandLogo from './src/components/BrandLogo';
+import { RAFAEL_FAVICON } from './src/constants/favicon';
 import {
   Colors,
   LightPalette,
@@ -326,27 +327,22 @@ export default function App() {
     if (typeof document !== 'undefined') {
       document.title = 'rafaelpublicado';
 
-      // Atualiza o favicon da aba do navegador para a logo oficial do Rafael Publicado
+      // Aplica o favicon oficial do Rafael Publicado diretamente via Data URI de alta resolução
       try {
-        const logoUrl = require('./assets/logo.png');
-        const href = typeof logoUrl === 'string' ? logoUrl : (logoUrl?.default || '/assets/logo.png');
-        
-        let link = document.querySelector("link[rel~='icon']");
-        if (!link) {
-          link = document.createElement('link');
-          link.rel = 'icon';
-          document.head.appendChild(link);
-        }
-        link.type = 'image/png';
-        link.href = href;
+        const setFavicon = (rel, href) => {
+          let link = document.querySelector(`link[rel~='${rel}']`);
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = rel;
+            document.head.appendChild(link);
+          }
+          link.type = 'image/png';
+          link.href = href;
+        };
 
-        let shortcut = document.querySelector("link[rel='shortcut icon']");
-        if (!shortcut) {
-          shortcut = document.createElement('link');
-          shortcut.rel = 'shortcut icon';
-          document.head.appendChild(shortcut);
-        }
-        shortcut.href = href;
+        setFavicon('icon', RAFAEL_FAVICON);
+        setFavicon('shortcut icon', RAFAEL_FAVICON);
+        setFavicon('apple-touch-icon', RAFAEL_FAVICON);
       } catch {}
     }
   }, []);

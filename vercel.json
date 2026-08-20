@@ -1,10 +1,10 @@
 {
   "buildCommand": "npx expo export -p web",
   "outputDirectory": "dist",
-  "framework": null,
+  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!favicon\\.ico|favicon\\.png|_expo/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
