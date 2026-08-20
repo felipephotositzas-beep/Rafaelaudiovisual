@@ -187,7 +187,7 @@ export default function Checkout() {
     const payload = {
       cart_id: cartIdParam || cartId,
       total_value: cartTotal,
-      customer_document: cleanCpf,
+      customer_document: maskCpf(cleanCpf),
     };
     if (includeContact) {
       payload.customer_name = name.trim();

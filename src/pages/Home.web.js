@@ -75,12 +75,15 @@ export default function Home() {
 
   const loadEventsData = async () => {
     setLoading(true);
+    let hasLoadedApiEvents = false;
+
     try {
       // 1. Carrega a página 1 instantaneamente
       const initialRes = await fetchEvents({ page: 1 });
       if (initialRes.ok) {
         const initialData = await initialRes.json();
         if (initialData.results && initialData.results.length > 0) {
+          hasLoadedApiEvents = true;
           setEvents(initialData.results);
         }
       }
@@ -90,11 +93,13 @@ export default function Home() {
       if (allRes.ok) {
         const allData = await allRes.json();
         if (allData.results && allData.results.length > 0) {
+          hasLoadedApiEvents = true;
           setEvents(allData.results);
         }
       }
-    } catch {
-      if (events.length === 0) {
+    } catch (error) {
+      console.warn('Não foi possível carregar todos os eventos:', error);
+      if (!hasLoadedApiEvents) {
         setEvents(mockEventsData.results);
       }
     } finally {

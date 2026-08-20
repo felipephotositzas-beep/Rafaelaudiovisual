@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
+  Image,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCart } from '../context/CartContext';
@@ -48,6 +49,7 @@ import {
   CreditCard,
   QrCode,
   CircleAlert,
+  Pencil,
 } from 'lucide-react-native';
 import PixQrCode from '../components/PixQrCode';
 
@@ -107,6 +109,8 @@ export default function Checkout() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [isExistingUser, setIsExistingUser] = useState(false);
+  const [customerData, setCustomerData] = useState(null);
+  const [isEditingCustomer, setIsEditingCustomer] = useState(false);
   const [hasRememberedCpf, setHasRememberedCpf] = useState(false);
 
   // Credit Card details
@@ -134,7 +138,10 @@ export default function Checkout() {
   const pollIntervalRef = useRef(null);
   const startTimeRef = useRef(null);
 
-  const hasExistingCustomer = isExistingUser && cpf.replace(/\D/g, '').length === 11;
+  const hasExistingCustomer =
+    isExistingUser &&
+    !isEditingCustomer &&
+    cpf.replace(/\D/g, '').length === 11;
 
   useEffect(() => {
     const init = async () => {
@@ -185,14 +192,21 @@ export default function Checkout() {
       if (customerFound) customer = await res.json();
 
       setIsExistingUser(customerFound);
-      setName(customer?.customer_name || '');
-      setEmail(customer?.customer_email || '');
-      setPhone(customer?.customer_phone ? maskPhone(customer.customer_phone) : '');
+      setCustomerData(customerFound ? customer : null);
+      setIsEditingCustomer(false);
+      setName('');
+      setEmail('');
+      setPhone('');
       setCard((prev) => ({ ...prev, document: maskCpf(cleanCpf) }));
       await AsyncStorage.setItem('customer_cpf', cleanCpf);
       setStep('userData');
     } catch {
       setIsExistingUser(false);
+      setCustomerData(null);
+      setIsEditingCustomer(false);
+      setName('');
+      setEmail('');
+      setPhone('');
       setStep('userData');
     } finally {
       setLoading(false);
@@ -285,7 +299,7 @@ export default function Checkout() {
       const checkoutPayload = {
         cart_id: cartId || cartIdParam,
         total_value: cartTotal.toFixed(2),
-        customer_document: cleanCpf,
+        customer_document: maskCpf(cleanCpf),
       };
       if (!hasExistingCustomer) {
         checkoutPayload.customer_name = name.trim();
@@ -504,7 +518,13 @@ export default function Checkout() {
                         setStep('cpf');
                         setCpf('');
                         setIsExistingUser(false);
+                        setCustomerData(null);
+                        setIsEditingCustomer(false);
+                        setName('');
+                        setEmail('');
+                        setPhone('');
                         setHasRememberedCpf(false);
+                        setCard((prev) => ({ ...prev, document: '' }));
                       }}
                     >
                       <Text style={styles.changeLink}>Alterar CPF</Text>
@@ -512,13 +532,61 @@ export default function Checkout() {
                   </View>
                   <Text style={styles.cardSubtitle}>
                     {hasExistingCustomer
-                      ? 'Cadastro encontrado. Seus dados serão recuperados pelo CPF.'
+                      ? 'Cadastro encontrado. Confirme se os dados estão corretos.'
                       : 'Preencha seus dados para receber o comprovante e os arquivos originais.'}
                   </Text>
+
+                  {hasExistingCustomer && (
+                    <View style={styles.customerSummary}>
+                      <View style={styles.customerSummaryHeading}>
+                        <CheckCircle2 size={18} color="#16A34A" />
+                        <Text style={styles.customerSummaryTitle}>Dados encontrados</Text>
+                      </View>
+
+                      {[
+                        ['Nome', customerData?.customer_name],
+                        ['CPF', customerData?.customer_document || maskCpf(cpf)],
+                        ['E-mail', customerData?.customer_email],
+                        ['WhatsApp', customerData?.customer_phone],
+                      ].map(([label, value]) => (
+                        <View key={label} style={styles.customerDataRow}>
+                          <Text style={styles.customerDataLabel}>{label}</Text>
+                          <Text style={styles.customerDataValue}>
+                            {value || 'Não informado'}
+                          </Text>
+                        </View>
+                      ))}
+
+                      <TouchableOpacity
+                        style={styles.editCustomerButton}
+                        onPress={() => {
+                          setIsEditingCustomer(true);
+                          setName('');
+                          setEmail('');
+                          setPhone('');
+                        }}
+                      >
+                        <Pencil size={15} color="#334155" />
+                        <Text style={styles.editCustomerButtonText}>Editar dados</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
                   {/* Customer Inputs */}
                   {!hasExistingCustomer && (
                     <View style={styles.inputGrid}>
+                      {isExistingUser && isEditingCustomer && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setIsEditingCustomer(false);
+                            setName('');
+                            setEmail('');
+                            setPhone('');
+                          }}
+                        >
+                          <Text style={styles.cancelEditLink}>Cancelar edição</Text>
+                        </TouchableOpacity>
+                      )}
                       <View style={styles.inputGroup}>
                         <Text style={styles.inputLabel}>Nome Completo</Text>
                         <TextInput
@@ -826,6 +894,33 @@ export default function Checkout() {
 
               <View style={styles.divider} />
 
+              <View style={styles.summaryItems}>
+                {cartItems.map((item) => (
+                  <View key={item.cartItemId || item.id} style={styles.summaryItem}>
+                    <Image
+                      source={{ uri: item.watermark_path || item.url }}
+                      style={styles.summaryItemImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.summaryItemContent}>
+                      <Text style={styles.summaryItemTitle} numberOfLines={2}>
+                        {item.description || 'Foto selecionada'}
+                      </Text>
+                      {item.short_reference ? (
+                        <Text style={styles.summaryItemReference} numberOfLines={1}>
+                          Código: #{item.short_reference}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.summaryItemPrice}>
+                        R$ {Number(item.price || 0).toFixed(2).replace('.', ',')}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.divider} />
+
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>
                   Subtotal ({cartItems.length}{' '}
@@ -1079,6 +1174,67 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.semibold,
     fontSize: 13,
   },
+  customerSummary: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 16,
+    marginBottom: 18,
+    gap: 10,
+  },
+  customerSummaryHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  customerSummaryTitle: {
+    color: '#166534',
+    fontSize: 14,
+    fontWeight: FontWeights.bold,
+  },
+  customerDataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  customerDataLabel: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: FontWeights.semibold,
+  },
+  customerDataValue: {
+    color: '#0F172A',
+    fontSize: 13,
+    textAlign: 'right',
+    flex: 1,
+  },
+  editCustomerButton: {
+    alignSelf: 'flex-start',
+    minHeight: 38,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: Radius.md,
+    backgroundColor: '#FFFFFF',
+  },
+  editCustomerButtonText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: FontWeights.semibold,
+  },
+  cancelEditLink: {
+    alignSelf: 'flex-end',
+    color: '#006BD6',
+    fontSize: 12,
+    fontWeight: FontWeights.semibold,
+  },
 
   // Section Header
   sectionHeaderTitle: {
@@ -1302,6 +1458,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: FontWeights.extrabold,
+  },
+  summaryItems: {
+    gap: 12,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  summaryItemImage: {
+    width: 54,
+    height: 68,
+    borderRadius: Radius.md,
+    backgroundColor: '#E2E8F0',
+  },
+  summaryItemContent: {
+    flex: 1,
+    minWidth: 0,
+    paddingTop: 1,
+  },
+  summaryItemTitle: {
+    color: '#0F172A',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: FontWeights.bold,
+  },
+  summaryItemReference: {
+    color: '#64748B',
+    fontSize: 11,
+    marginTop: 3,
+  },
+  summaryItemPrice: {
+    color: '#0F172A',
+    fontSize: 12,
+    fontWeight: FontWeights.bold,
+    marginTop: 4,
   },
   divider: {
     height: 1,

@@ -43,11 +43,15 @@ export const CartProvider = ({ children }) => {
       const items = backendCart.items.map(item => ({
         id: item.photo.id,
         cartItemId: item.id,
+        description: item.description || '',
         short_reference: item.photo.short_reference,
         watermark_path: item.photo.watermark_path,
         url: item.photo.watermark_path,
         is_video: item.photo.is_video,
-        price: parsePrice(item.photo.price, PHOTO_PRICE),
+        price: parsePrice(
+          item.final_price ?? item.price ?? item.photo.price,
+          PHOTO_PRICE
+        ),
       }));
       setCartItems(items);
       setCartSubtotal(parsePrice(backendCart.value || 0));

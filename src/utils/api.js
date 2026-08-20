@@ -24,44 +24,75 @@ export const fetchEvents = (params = {}, options = {}) => {
   return fetch(buildUrl(`/api/pages/events/list?${query}`), options);
 };
 
-// Busca todas as páginas de eventos da API simultaneamente
-export const fetchAllEvents = async (params = {}, options = {}) => {
-  try {
-    const firstRes = await fetchEvents({ page: 1, ...params }, options);
-    if (!firstRes.ok) return firstRes;
-    const firstData = await firstRes.json();
-    const count = firstData.count || 0;
-    const pageSize = (firstData.results && firstData.results.length) || 20;
-    const totalPages = Math.ceil(count / pageSize);
+const wait = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-    let allResults = [...(firstData.results || [])];
-    if (totalPages > 1) {
-      const pagePromises = [];
-      for (let p = 2; p <= totalPages; p++) {
-        pagePromises.push(
-          fetchEvents({ page: p, ...params }, options)
-            .then((r) => (r.ok ? r.json() : null))
-            .then((d) => (d && d.results ? d.results : []))
-            .catch(() => [])
-        );
+const fetchEventsPageData = async (
+  page,
+  params,
+  options,
+  maxAttempts = 3
+) => {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetchEvents({ ...params, page }, options);
+      if (response.ok) return response.json();
+
+      const error = new Error(`Falha ao carregar a página ${page}.`);
+      error.status = response.status;
+      lastError = error;
+
+      const canRetry = response.status === 429 || response.status >= 500;
+      if (!canRetry) {
+        error.retryable = false;
+        throw error;
       }
-      const restResults = await Promise.all(pagePromises);
-      for (const pageItems of restResults) {
-        allResults = allResults.concat(pageItems);
-      }
+    } catch (error) {
+      if (options.signal?.aborted || error?.name === 'AbortError') throw error;
+      if (error?.retryable === false) throw error;
+      lastError = error;
     }
 
-    return {
-      ok: true,
-      json: async () => ({
-        ...firstData,
-        count: allResults.length,
-        results: allResults,
-      }),
-    };
-  } catch (error) {
-    return fetchEvents(params, options);
+    if (attempt < maxAttempts) {
+      await wait(300 * 2 ** (attempt - 1));
+    }
   }
+
+  throw lastError || new Error(`Falha ao carregar a página ${page}.`);
+};
+
+// Busca todas as páginas sem sobrecarregar a API com requisições simultâneas.
+export const fetchAllEvents = async (params = {}, options = {}) => {
+  let page = 1;
+  let firstData = null;
+  const eventsById = new Map();
+
+  while (page <= 50) {
+    const data = await fetchEventsPageData(page, params, options);
+    if (!firstData) firstData = data;
+
+    for (const event of data.results || []) {
+      if (event?.id) eventsById.set(event.id, event);
+    }
+
+    if (!data.next) break;
+    page += 1;
+  }
+
+  const results = Array.from(eventsById.values());
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({
+      ...(firstData || {}),
+      count: results.length,
+      next: null,
+      previous: null,
+      results,
+    }),
+  };
 };
 
 export const fetchEventById = async (eventId, options = {}) => {
