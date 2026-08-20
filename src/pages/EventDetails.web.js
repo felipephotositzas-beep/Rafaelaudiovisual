@@ -159,7 +159,19 @@ export default function EventDetails() {
   const navigation = useNavigation();
   const route = useRoute();
   const eventParam = route.params?.event;
-  const id = eventParam?.id || route.params?.id;
+
+  // Resolve ID and Slug from params or web URL search params
+  let initialId = eventParam?.id || route.params?.id || route.params?.eventId;
+  let initialSlug = eventParam?.slug || route.params?.slug;
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (!initialId) initialId = searchParams.get('id') || searchParams.get('event_id');
+      if (!initialSlug) initialSlug = searchParams.get('slug');
+    } catch {}
+  }
+
+  const [id, setId] = useState(initialId || null);
   const { isMobile, isDesktop } = useBreakpoint();
 
   const [eventData, setEventData] = useState(eventParam || null);
@@ -185,10 +197,39 @@ export default function EventDetails() {
     useCart();
   const discountTiers = getProgressiveDiscountTiers(eventData);
 
+  // If we only have slug or eventParam without id, resolve event from API
   useEffect(() => {
-    if (id) {
+    if (id) return;
+    let active = true;
+    const resolveEvent = async () => {
+      try {
+        const response = await fetchEvents();
+        if (!response.ok) return;
+        const data = await response.json();
+        const found = data.results?.find(
+          (event) => event.id === initialId || (initialSlug && event.slug === initialSlug)
+        );
+        if (active && found) {
+          setId(found.id);
+          setEventData(found);
+        } else if (active) {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.warn('resolveEvent error:', error);
+        if (active) setLoading(false);
+      }
+    };
+    resolveEvent();
+    return () => {
+      active = false;
+    };
+  }, [id, initialId, initialSlug]);
+
+  useEffect(() => {
+    if (id && id !== 'undefined') {
       initializeCartForEvent(id);
-      const slug = eventData?.slug || eventParam?.slug;
+      const slug = eventData?.slug || eventParam?.slug || initialSlug;
       if (slug) {
         fetchEventPrivacy(slug).then((isPriv) => {
           setIsPrivateEvent(Boolean(isPriv));
@@ -205,10 +246,10 @@ export default function EventDetails() {
       loadMediaCount('video');
       loadMediaCount('photo');
     }
-  }, [id, eventData?.slug, eventParam?.slug]);
+  }, [id, eventData?.slug, eventParam?.slug, initialSlug]);
 
   useEffect(() => {
-    if (eventParam || !id) return;
+    if (eventParam || !id || id === 'undefined') return;
     let active = true;
     const loadEvent = async () => {
       try {
@@ -228,6 +269,7 @@ export default function EventDetails() {
   }, [eventParam, id]);
 
   const loadMediaCount = async (mediaType) => {
+    if (!id || id === 'undefined') return;
     try {
       const res = await fetchPhotos(id, 1, mediaType);
       if (!res.ok) return;
@@ -242,6 +284,10 @@ export default function EventDetails() {
   };
 
   const loadPhotosData = async (pageNumber, mediaType = mediaFilter) => {
+    if (!id || id === 'undefined') {
+      setLoading(false);
+      return;
+    }
     if (pageNumber === 1) {
       setLoading(true);
       setIsFaceSearchActive(false);

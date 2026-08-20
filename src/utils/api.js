@@ -83,9 +83,14 @@ export const fetchEventPrivacy = async (eventSlug) => {
   }
 };
 
-// ─── FOTOS ────────────────────────────────────────────────────────────────────
-
 export const fetchPhotos = (eventId, page = 1, mediaType = 'photo', photographerId = DEFAULT_PHOTOGRAPHER_ID) => {
+  if (!eventId || eventId === 'undefined' || typeof eventId !== 'string') {
+    return Promise.resolve({
+      ok: false,
+      status: 400,
+      json: async () => ({ count: 0, num_pages: 0, results: [] }),
+    });
+  }
   const query = new URLSearchParams({
     page: String(page),
     media_type: mediaType,
@@ -94,10 +99,17 @@ export const fetchPhotos = (eventId, page = 1, mediaType = 'photo', photographer
     query.append('photographer_id', photographerId);
     query.append('photographer', photographerId);
   }
-  return fetch(buildUrl(`/api/photo/list/${eventId}?${query}`));
+  return fetch(buildUrl(`/api/photo/list/${encodeURIComponent(eventId)}?${query}`));
 };
 
 export const searchByFace = async (eventId, imageDataUrl, photographerId = DEFAULT_PHOTOGRAPHER_ID) => {
+  if (!eventId || eventId === 'undefined') {
+    return Promise.resolve({
+      ok: false,
+      status: 400,
+      json: async () => ({ count: 0, results: [] }),
+    });
+  }
   const formData = new FormData();
   formData.append('photo', imageDataUrl);
 
