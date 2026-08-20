@@ -173,6 +173,12 @@ export default function Checkout() {
   }, [cartIdParam]);
 
   useEffect(() => {
+    if (!cartIdParam && cartId) {
+      navigation.setParams({ cart_id: cartId });
+    }
+  }, [cartId, cartIdParam, navigation]);
+
+  useEffect(() => {
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };

@@ -7,7 +7,7 @@ import CartModal from './CartModal';
 import { FontWeights, Radius, Shadows, Spacing } from '../constants/theme';
 
 export default function CartFloatingBar() {
-  const { cartItems, cartTotal } = useCart();
+  const { cartItems, cartTotal, cartId } = useCart();
   const navigation = useNavigation();
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -51,7 +51,7 @@ export default function CartFloatingBar() {
         onClose={() => setModalVisible(false)}
         onCheckout={() => {
           setModalVisible(false);
-          navigation.navigate('Checkout');
+          navigation.navigate('Checkout', { cart_id: cartId });
         }}
       />
     </>

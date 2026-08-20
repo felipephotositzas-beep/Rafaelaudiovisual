@@ -40,7 +40,12 @@ const theme = Colors.light;
 const Stack = createNativeStackNavigator();
 
 const linking = {
-  prefixes: ['apptopfotosnative://', 'https://topfotos.com.br', 'https://rafaelpublicado.com.br'],
+  prefixes: [
+    'apptopfotosnative://',
+    'https://topfotos.com.br',
+    'https://rafaelpublicado.com.br',
+    'https://rafaelaudiovisual.vercel.app',
+  ],
   config: {
     screens: {
       Home: '',
@@ -53,12 +58,12 @@ const linking = {
 
 // ─── CART BUTTON ─────────────────────────────────────────────────────────────
 function CartHeaderButton({ navigation, compact }) {
-  const { cartItems, cartTotal } = useCart();
+  const { cartItems, cartTotal, cartId } = useCart();
   const [modalVisible, setModalVisible] = useState(false);
 
   const handleCheckout = () => {
     setModalVisible(false);
-    navigation.navigate('Checkout');
+    navigation.navigate('Checkout', { cart_id: cartId });
   };
 
   if (cartItems.length === 0) return null;

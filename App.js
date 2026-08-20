@@ -20,7 +20,12 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 const Stack = createNativeStackNavigator();
 
 const linking = {
-  prefixes: ['apptopfotosnative://', 'https://topfotos.com.br', 'https://rafaelpublicado.com.br'],
+  prefixes: [
+    'apptopfotosnative://',
+    'https://topfotos.com.br',
+    'https://rafaelpublicado.com.br',
+    'https://rafaelaudiovisual.vercel.app',
+  ],
   config: {
     screens: {
       Home: '',
