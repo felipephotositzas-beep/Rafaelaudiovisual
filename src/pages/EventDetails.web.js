@@ -670,7 +670,7 @@ export default function EventDetails() {
           >
             <View style={styles.spotlightLeft}>
               <View style={styles.spotlightIconBox}>
-                <ScanFace size={26} color="#EF4444" strokeWidth={2} />
+                <ScanFace size={26} color="#006BD6" strokeWidth={2} />
               </View>
               <View style={styles.spotlightTextBox}>
                 <Text style={styles.spotlightTitle}>
@@ -1083,9 +1083,9 @@ const styles = StyleSheet.create({
 
   // 3. Facial Recognition Spotlight Card
   spotlightCard: {
-    backgroundColor: '#F8FFF9',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#DCFCE7',
+    borderColor: '#BFDBFE',
     borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
@@ -1093,7 +1093,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
     marginBottom: 20,
-    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+    boxShadow: '0 2px 10px rgba(0, 107, 214, 0.04)',
   },
   spotlightCardMobile: {
     flexDirection: 'column',
@@ -1112,7 +1112,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#FEE2E2',
+    borderColor: '#BFDBFE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1130,13 +1130,13 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   btnFaceSearchGreen: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#006BD6',
     paddingVertical: 10,
     paddingHorizontal: 22,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)',
+    boxShadow: '0 2px 8px rgba(0, 107, 214, 0.25)',
   },
   btnClearFaceGreen: {
     backgroundColor: '#006BD6',
@@ -1220,8 +1220,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   tabCardActivePhoto: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
   },
   tabCardActiveVideo: {
     backgroundColor: '#EFF6FF',
@@ -1241,7 +1241,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabIconCircleActivePhoto: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#006BD6',
   },
   tabIconCircleActiveVideo: {
     backgroundColor: '#006BD6',
@@ -1262,7 +1262,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   tabCardBadgeActivePhoto: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#DBEAFE',
   },
   tabCardBadgeActiveVideo: {
     backgroundColor: '#DBEAFE',
@@ -1273,7 +1273,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   tabCardBadgeTextActivePhoto: {
-    color: '#15803D',
+    color: '#1D4ED8',
   },
   tabCardBadgeTextActiveVideo: {
     color: '#1D4ED8',
