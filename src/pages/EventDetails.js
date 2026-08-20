@@ -10,6 +10,7 @@ import {
   Alert,
   ScrollView,
   Linking,
+  Share,
 } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import {
@@ -40,7 +41,7 @@ import MediaViewer from '../components/MediaViewer';
 import CartFloatingBar from '../components/CartFloatingBar';
 import CameraCapture from '../components/CameraCapture';
 import { useCart } from '../context/CartContext';
-import { fetchEvents, fetchPhotos, searchByFace } from '../utils/api';
+import { fetchEventById, fetchPhotos, searchByFace } from '../utils/api';
 import { getProgressiveDiscountTiers } from '../utils/progressiveDiscountUtils';
 import {
   Colors,
@@ -114,6 +115,7 @@ const formatPhone = (phone) => {
 };
 
 const PHOTO_GAP = 8;
+const PUBLIC_SITE_URL = 'https://topfotos.com.br';
 
 export default function EventDetails() {
   const route = useRoute();
@@ -155,11 +157,10 @@ export default function EventDetails() {
     let active = true;
     const loadEvent = async () => {
       try {
-        const response = await fetchEvents();
+        const response = await fetchEventById(id);
         if (!response.ok) return;
-        const data = await response.json();
-        const found = data.results?.find((event) => event.id === id);
-        if (active && found) setEventData(found);
+        const event = await response.json();
+        if (active) setEventData(event);
       } catch (error) {
         console.warn('loadEvent error:', error);
       }
@@ -304,6 +305,22 @@ export default function EventDetails() {
   const videoCount = mediaCounts.video;
   const totalMediaCount = photoCount + videoCount;
 
+  const handleShare = async () => {
+    const eventUrl = `${PUBLIC_SITE_URL}/evento/${encodeURIComponent(id)}`;
+    const eventName = eventData?.name || 'Galeria de evento';
+    try {
+      await Share.share({
+        title: eventName,
+        message: `Veja as fotos do evento ${eventName}: ${eventUrl}`,
+        url: eventUrl,
+      });
+    } catch {
+      await Clipboard.setStringAsync(eventUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    }
+  };
+
   const renderHeader = () => (
     <View style={styles.headerBlock}>
       {/* Event Top Card */}
@@ -329,6 +346,18 @@ export default function EventDetails() {
             </View>
           )}
         </View>
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={handleShare}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`Compartilhar evento ${eventData?.name || ''}`}
+        >
+          <Share2 size={14} color="#009DFF" />
+          <Text style={styles.shareButtonText}>
+            {linkCopied ? 'Link copiado!' : 'Compartilhar evento'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Face Search Section */}
@@ -546,6 +575,24 @@ const styles = StyleSheet.create({
   metaBadgeText: {
     fontSize: 11,
     color: DarkPalette.textSecondary,
+  },
+  shareButton: {
+    minHeight: 36,
+    marginTop: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 157, 255, 0.35)',
+    backgroundColor: 'rgba(0, 107, 214, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  shareButtonText: {
+    color: '#F7F9FC',
+    fontSize: 12,
+    fontWeight: FontWeights.semibold,
   },
 
   // Face Search

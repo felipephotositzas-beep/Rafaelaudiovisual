@@ -41,6 +41,7 @@ import CartFloatingBar from '../components/CartFloatingBar';
 import CameraCapture from '../components/CameraCapture';
 import { useCart } from '../context/CartContext';
 import {
+  fetchEventById,
   fetchEvents,
   fetchPhotos,
   searchByFace,
@@ -62,6 +63,20 @@ import {
 const theme = Colors.light;
 const MAX_FACE_IMAGE_DIMENSION = 1500;
 const MAX_FACE_IMAGE_BYTES = 1_100_000;
+const PUBLIC_SITE_URL = 'https://topfotos.com.br';
+
+const getEventShareUrl = (eventId) => {
+  let origin = PUBLIC_SITE_URL;
+  if (typeof window !== 'undefined') {
+    const isLocalhost = ['localhost', '127.0.0.1'].includes(
+      window.location.hostname
+    );
+    if (!isLocalhost && /^https?:$/.test(window.location.protocol)) {
+      origin = window.location.origin;
+    }
+  }
+  return `${origin}/evento/${encodeURIComponent(eventId)}`;
+};
 
 const estimateDataUrlBytes = (dataUrl) => {
   const base64 = dataUrl?.split(',')[1] || '';
@@ -312,7 +327,7 @@ export default function EventDetails() {
     let active = true;
     const loadEvent = async () => {
       try {
-        const res = await fetchEventDetail(id);
+        const res = await fetchEventById(id);
         if (res.ok) {
           const data = await res.json();
           if (active) setEventData(data);
@@ -326,6 +341,62 @@ export default function EventDetails() {
       active = false;
     };
   }, [eventParam, id]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !id) return undefined;
+
+    const eventName = eventData?.name || 'Galeria do evento';
+    const title = `${eventName} | Rafael Publicado`;
+    const description = eventData?.city
+      ? `Veja e encontre suas fotos do evento ${eventName}, em ${eventData.city}.`
+      : `Veja e encontre suas fotos do evento ${eventName}.`;
+    const canonicalUrl = getEventShareUrl(id);
+    const image = eventData?.image || eventData?.rawEvent?.image;
+
+    const setMeta = (attribute, key, content) => {
+      if (!content) return;
+      let element = document.head.querySelector(
+        `meta[${attribute}="${key}"]`
+      );
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attribute, key);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+      element.setAttribute('data-event-meta', 'true');
+    };
+
+    document.title = title;
+    setMeta('name', 'description', description);
+    setMeta('property', 'og:type', 'website');
+    setMeta('property', 'og:site_name', 'Rafael Publicado Audiovisual');
+    setMeta('property', 'og:title', title);
+    setMeta('property', 'og:description', description);
+    setMeta('property', 'og:url', canonicalUrl);
+    setMeta('property', 'og:image', image);
+    setMeta('property', 'og:image:alt', `Capa do evento ${eventName}`);
+    setMeta('name', 'twitter:card', 'summary_large_image');
+    setMeta('name', 'twitter:title', title);
+    setMeta('name', 'twitter:description', description);
+    setMeta('name', 'twitter:image', image);
+
+    let canonical = document.head.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement('link');
+      canonical.rel = 'canonical';
+      document.head.appendChild(canonical);
+    }
+    canonical.href = canonicalUrl;
+    canonical.setAttribute('data-event-meta', 'true');
+
+    return () => {
+      document.head
+        .querySelectorAll('[data-event-meta="true"]')
+        .forEach((element) => element.remove());
+      document.title = 'rafaelpublicado';
+    };
+  }, [eventData, id]);
 
   const loadMediaCount = async (mediaType) => {
     if (!id || id === 'undefined') return;
@@ -504,10 +575,19 @@ export default function EventDetails() {
   };
 
   const handleShare = async () => {
-    const url =
-      typeof window !== 'undefined'
-        ? window.location.href
-        : `https://topfotos.com.br/evento/${id}`;
+    const url = getEventShareUrl(id);
+    const title = eventData?.name || 'Galeria de evento';
+    const text = `Veja as fotos do evento ${title}.`;
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(url);
     } else {

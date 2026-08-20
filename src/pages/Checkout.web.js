@@ -98,7 +98,7 @@ export default function Checkout() {
     cartId,
   } = useCart();
 
-  const [step, setStep] = useState('cpf'); // 'cpf' | 'userData' | 'pix'
+  const [step, setStep] = useState('cpf'); // 'cpf' | 'userData' | 'pix' | 'cardProcessing'
   const [paymentMethod, setPaymentMethod] = useState('PIX'); // 'PIX' | 'CREDIT_CARD'
 
   // User details
@@ -133,6 +133,8 @@ export default function Checkout() {
 
   const pollIntervalRef = useRef(null);
   const startTimeRef = useRef(null);
+
+  const hasExistingCustomer = isExistingUser && cpf.replace(/\D/g, '').length === 11;
 
   useEffect(() => {
     const init = async () => {
@@ -179,23 +181,18 @@ export default function Checkout() {
     try {
       const res = await fetchCustomerInfo(cleanCpf);
       let customer = null;
-      if (res.ok) customer = await res.json();
-      const hasData = !!(
-        customer?.customer_name?.trim() &&
-        customer?.customer_email?.trim() &&
-        customer?.customer_phone?.trim()
-      );
+      const customerFound = res.ok;
+      if (customerFound) customer = await res.json();
 
-      if (hasData) {
-        setName(customer.customer_name);
-        setEmail(customer.customer_email);
-        setPhone(maskPhone(customer.customer_phone));
-        setIsExistingUser(true);
-      }
+      setIsExistingUser(customerFound);
+      setName(customer?.customer_name || '');
+      setEmail(customer?.customer_email || '');
+      setPhone(customer?.customer_phone ? maskPhone(customer.customer_phone) : '');
       setCard((prev) => ({ ...prev, document: maskCpf(cleanCpf) }));
       await AsyncStorage.setItem('customer_cpf', cleanCpf);
       setStep('userData');
     } catch {
+      setIsExistingUser(false);
       setStep('userData');
     } finally {
       setLoading(false);
@@ -223,6 +220,7 @@ export default function Checkout() {
           setOrder(updated);
           if (updated.status === 'PAID') {
             setOrderStatus('PAID');
+            setStep('pix');
             clearInterval(pollIntervalRef.current);
             clearCart();
           }
@@ -237,17 +235,19 @@ export default function Checkout() {
     const cleanCpf = cpf.replace(/\D/g, '');
     const cleanPhone = phone.replace(/\D/g, '');
 
-    if (!name.trim()) {
-      alert('Preencha seu nome completo.');
-      return;
-    }
-    if (!email.trim() || !email.includes('@')) {
-      alert('Preencha um e-mail válido.');
-      return;
-    }
-    if (cleanPhone.length < 10) {
-      alert('Preencha um telefone/WhatsApp válido.');
-      return;
+    if (!hasExistingCustomer) {
+      if (!name.trim()) {
+        alert('Preencha seu nome completo.');
+        return;
+      }
+      if (!email.trim() || !email.includes('@')) {
+        alert('Preencha um e-mail válido.');
+        return;
+      }
+      if (cleanPhone.length < 10) {
+        alert('Preencha um telefone/WhatsApp válido.');
+        return;
+      }
     }
 
     if (paymentMethod === 'CREDIT_CARD') {
@@ -258,6 +258,11 @@ export default function Checkout() {
       }
       if (!card.name.trim()) {
         setCardError('Preencha o nome impresso no cartão.');
+        return;
+      }
+      const cardDocument = card.document.replace(/\D/g, '') || cleanCpf;
+      if (!isValidCpf(cardDocument)) {
+        setCardError('CPF do titular do cartão inválido.');
         return;
       }
       const expParts = card.expiration.split('/');
@@ -273,17 +278,20 @@ export default function Checkout() {
 
     setLoading(true);
     setCardError('');
+    setOrderStatus('PENDING_PAYMENT');
 
     try {
       // 1. Cria o pedido na API TopFotos
       const checkoutPayload = {
         cart_id: cartId || cartIdParam,
         total_value: cartTotal.toFixed(2),
-        customer_name: name.trim(),
-        customer_email: email.trim(),
-        customer_phone: cleanPhone,
         customer_document: cleanCpf,
       };
+      if (!hasExistingCustomer) {
+        checkoutPayload.customer_name = name.trim();
+        checkoutPayload.customer_email = email.trim();
+        checkoutPayload.customer_phone = cleanPhone;
+      }
 
       const checkoutRes = await submitCheckout(checkoutPayload);
       if (!checkoutRes.ok) {
@@ -301,6 +309,9 @@ export default function Checkout() {
         const pixRes = await fetchOrderPix(orderData.id);
         const pixPayload = pixRes.ok ? await pixRes.json() : null;
         const pData = extractPixData(orderData, pixPayload);
+        if (!pixRes.ok || !pData?.qrcode_data) {
+          throw new Error('Não foi possível gerar o QR Code Pix.');
+        }
         setPixData(pData);
         setStep('pix');
         startPollingOrderStatus(orderData.id);
@@ -330,9 +341,15 @@ export default function Checkout() {
 
         const payData = await payRes.json();
         setOrder(payData);
-        setOrderStatus('PAID');
-        setStep('pix');
-        clearCart();
+        if (payData.status === 'PAID') {
+          setOrderStatus('PAID');
+          setStep('pix');
+          clearCart();
+        } else {
+          setOrderStatus(payData.status || 'PENDING_PAYMENT');
+          setStep('cardProcessing');
+          startPollingOrderStatus(orderData.id);
+        }
       }
     } catch (e) {
       if (paymentMethod === 'CREDIT_CARD') {
@@ -486,6 +503,7 @@ export default function Checkout() {
                       onPress={() => {
                         setStep('cpf');
                         setCpf('');
+                        setIsExistingUser(false);
                         setHasRememberedCpf(false);
                       }}
                     >
@@ -493,46 +511,50 @@ export default function Checkout() {
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.cardSubtitle}>
-                    Preencha seus dados para receber o comprovante e os arquivos originais.
+                    {hasExistingCustomer
+                      ? 'Cadastro encontrado. Seus dados serão recuperados pelo CPF.'
+                      : 'Preencha seus dados para receber o comprovante e os arquivos originais.'}
                   </Text>
 
                   {/* Customer Inputs */}
-                  <View style={styles.inputGrid}>
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Nome Completo</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={name}
-                        onChangeText={setName}
-                        placeholder="Seu nome completo"
-                        placeholderTextColor="#94A3B8"
-                      />
-                    </View>
+                  {!hasExistingCustomer && (
+                    <View style={styles.inputGrid}>
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>Nome Completo</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={name}
+                          onChangeText={setName}
+                          placeholder="Seu nome completo"
+                          placeholderTextColor="#94A3B8"
+                        />
+                      </View>
 
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>E-mail para envio das fotos</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        placeholder="seuemail@exemplo.com"
-                        placeholderTextColor="#94A3B8"
-                      />
-                    </View>
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>E-mail para envio das fotos</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={email}
+                          onChangeText={setEmail}
+                          keyboardType="email-address"
+                          placeholder="seuemail@exemplo.com"
+                          placeholderTextColor="#94A3B8"
+                        />
+                      </View>
 
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>WhatsApp / Telefone</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={phone}
-                        onChangeText={(v) => setPhone(maskPhone(v))}
-                        keyboardType="phone-pad"
-                        placeholder="(00) 00000-0000"
-                        placeholderTextColor="#94A3B8"
-                      />
+                      <View style={styles.inputGroup}>
+                        <Text style={styles.inputLabel}>WhatsApp / Telefone</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={phone}
+                          onChangeText={(v) => setPhone(maskPhone(v))}
+                          keyboardType="phone-pad"
+                          placeholder="(00) 00000-0000"
+                          placeholderTextColor="#94A3B8"
+                        />
+                      </View>
                     </View>
-                  </View>
+                  )}
 
                   {/* Payment Method Selector */}
                   <Text style={styles.sectionHeaderTitle}>FORMA DE PAGAMENTO</Text>
@@ -684,6 +706,19 @@ export default function Checkout() {
                       </>
                     )}
                   </TouchableOpacity>
+                </View>
+              )}
+
+              {/* STEP: Card processing */}
+              {step === 'cardProcessing' && (
+                <View style={[styles.card, isMobile && styles.cardMobile]}>
+                  <ActivityIndicator color="#006BD6" size="large" />
+                  <Text style={[styles.cardTitle, { textAlign: 'center', marginTop: 16 }]}>
+                    Confirmando pagamento
+                  </Text>
+                  <Text style={[styles.cardSubtitle, { textAlign: 'center' }]}>
+                    Recebemos a transação do cartão e estamos aguardando a confirmação da operadora.
+                  </Text>
                 </View>
               )}
 

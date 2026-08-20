@@ -34,7 +34,8 @@ const EventCard = ({ event }) => {
     year: 'numeric',
   });
 
-  const handlePress = () => navigation.navigate('EventDetails', { event });
+  const handlePress = () =>
+    navigation.navigate('EventDetails', { id: event.id, event });
 
   return (
     <TouchableOpacity

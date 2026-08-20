@@ -64,6 +64,28 @@ export const fetchAllEvents = async (params = {}, options = {}) => {
   }
 };
 
+export const fetchEventById = async (eventId, options = {}) => {
+  if (!eventId || eventId === 'undefined') {
+    return {
+      ok: false,
+      status: 400,
+      json: async () => ({}),
+    };
+  }
+
+  const response = await fetchAllEvents({}, options);
+  if (!response.ok) return response;
+
+  const data = await response.json();
+  const event = (data.results || []).find((item) => item.id === eventId);
+
+  return {
+    ok: Boolean(event),
+    status: event ? 200 : 404,
+    json: async () => event || {},
+  };
+};
+
 export const fetchModalities = () =>
   fetch(buildUrl('/api/panel/modality'));
 

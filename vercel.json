@@ -4,7 +4,11 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!favicon\\.ico|favicon\\.png|_expo/|assets/|.*\\..*).*)",
+      "source": "/evento/:id",
+      "destination": "/api/event-page?id=:id"
+    },
+    {
+      "source": "/((?!api/|favicon\\.ico|favicon\\.png|_expo/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]

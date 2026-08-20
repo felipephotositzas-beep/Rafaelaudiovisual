@@ -385,6 +385,7 @@ export default function Home() {
                     style={[s.eventCard, isMobile && s.eventCardMobile]}
                     onPress={() =>
                       navigation.navigate('EventDetails', {
+                        id: gal.id,
                         event: gal.rawEvent || events.find((e) => e.id === gal.id) || events[0],
                       })
                     }

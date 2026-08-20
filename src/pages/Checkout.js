@@ -140,19 +140,17 @@ export default function Checkout() {
     try {
       const res = await fetchCustomerInfo(cleanCpf);
       let customer = null;
-      if (res.ok) customer = await res.json();
-      const hasData = !!(
-        customer?.customer_name?.trim() &&
-        customer?.customer_email?.trim() &&
-        customer?.customer_phone?.trim()
-      );
+      const customerFound = res.ok;
+      if (customerFound) customer = await res.json();
       await AsyncStorage.setItem('customer_cpf', cleanCpf);
       setHasRememberedCpf(true);
-      if (hasData) {
+      if (customerFound) {
         setIsExistingUser(true);
-        setName(customer.customer_name);
-        setEmail(customer.customer_email);
-        setPhone(maskPhone(customer.customer_phone));
+        setName(customer?.customer_name || '');
+        setEmail(customer?.customer_email || '');
+        setPhone(
+          customer?.customer_phone ? maskPhone(customer.customer_phone) : ''
+        );
         await handleFinalize(cleanCpf, true);
         return;
       }

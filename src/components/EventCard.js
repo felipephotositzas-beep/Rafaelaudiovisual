@@ -28,7 +28,7 @@ const EventCard = ({ event }) => {
   });
 
   const handlePress = () => {
-    navigation.navigate('EventDetails', { event });
+    navigation.navigate('EventDetails', { id: event.id, event });
   };
 
   return (
