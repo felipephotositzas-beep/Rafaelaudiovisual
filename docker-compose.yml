@@ -1,24 +1,55 @@
-# docker-compose.yml
-# Deploy completo com PostgreSQL 16 e API Backend para VPS
-
 version: '3.8'
 
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
     container_name: topfotos_postgres
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-topfotos_secret_2026}
-      POSTGRES_DB: ${DB_NAME:-topfotos_db}
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senhaforte123
+      POSTGRES_DB: topfotosdb
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      # Os scripts na pasta database/ rodarão apenas na PRIMEIRA inicialização para criar as tabelas e dados falsos
+      - ./database:/docker-entrypoint-initdb.d
+    networks:
+      - topfotos_net
+
+  backend:
+    build:
+      context: ./backend
+    container_name: topfotos_backend
+    restart: always
+    environment:
+      PORT: 3001
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senhaforte123
+      POSTGRES_DB: topfotosdb
+      POSTGRES_HOST: db
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    networks:
+      - topfotos_net
+
+  frontend:
+    build:
+      context: .
+    container_name: topfotos_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - topfotos_net
 
 volumes:
   pgdata:
-    driver: local
+
+networks:
+  topfotos_net:

@@ -113,30 +113,59 @@ export function AdminConfigProvider({ children }) {
   const [adminPassword, setAdminPassword] = useState('admin123');
   const [isLoaded, setIsLoaded] = useState(false);
 
+const API_URL = 'http://187.127.62.60:3001/api';
+
   // Carregar dados salvos
   useEffect(() => {
     const loadStoredData = async () => {
       try {
-        const storedConfig = await AsyncStorage.getItem(ADMIN_STORAGE_KEY);
-        if (storedConfig) {
-          const parsed = JSON.parse(storedConfig);
+        let parsedConfig = null;
+        let parsedRules = null;
+        
+        // 1. Tenta carregar do Backend (VPS)
+        try {
+          const resConfig = await fetch(`${API_URL}/config`);
+          if (resConfig.ok) {
+            const data = await resConfig.json();
+            if (Object.keys(data).length > 1) {
+              parsedConfig = data;
+            }
+          }
+          const resRules = await fetch(`${API_URL}/events/rules`);
+          if (resRules.ok) {
+            parsedRules = await resRules.json();
+          }
+        } catch (apiErr) {
+          console.warn('Backend API não respondeu, usando AsyncStorage de fallback', apiErr);
+        }
+
+        // 2. Se backend falhou ou vazio, tenta AsyncStorage
+        if (!parsedConfig) {
+          const storedConfig = await AsyncStorage.getItem(ADMIN_STORAGE_KEY);
+          if (storedConfig) parsedConfig = JSON.parse(storedConfig);
+        }
+        if (!parsedRules) {
+          const storedRules = await AsyncStorage.getItem(EVENT_RULES_STORAGE_KEY);
+          if (storedRules) parsedRules = JSON.parse(storedRules);
+        }
+
+        // Aplica as configurações
+        if (parsedConfig) {
           setConfig({
             ...DEFAULT_CONFIG,
-            ...parsed,
-            branding: { ...DEFAULT_CONFIG.branding, ...(parsed.branding || {}) },
-            theme: { ...DEFAULT_CONFIG.theme, ...(parsed.theme || {}) },
-            banners: { ...DEFAULT_CONFIG.banners, ...(parsed.banners || {}) },
-            eventsConfig: { ...DEFAULT_CONFIG.eventsConfig, ...(parsed.eventsConfig || {}) },
-            howItWorks: { ...DEFAULT_CONFIG.howItWorks, ...(parsed.howItWorks || {}) },
-            photographers: Array.isArray(parsed.photographers) && parsed.photographers.length > 0
-              ? parsed.photographers
+            ...parsedConfig,
+            branding: { ...DEFAULT_CONFIG.branding, ...(parsedConfig.branding || {}) },
+            theme: { ...DEFAULT_CONFIG.theme, ...(parsedConfig.theme || {}) },
+            banners: { ...DEFAULT_CONFIG.banners, ...(parsedConfig.banners || {}) },
+            eventsConfig: { ...DEFAULT_CONFIG.eventsConfig, ...(parsedConfig.eventsConfig || {}) },
+            howItWorks: { ...DEFAULT_CONFIG.howItWorks, ...(parsedConfig.howItWorks || {}) },
+            photographers: Array.isArray(parsedConfig.photographers) && parsedConfig.photographers.length > 0
+              ? parsedConfig.photographers
               : DEFAULT_CONFIG.photographers,
           });
         }
-
-        const storedRules = await AsyncStorage.getItem(EVENT_RULES_STORAGE_KEY);
-        if (storedRules) {
-          setEventRules(JSON.parse(storedRules));
+        if (parsedRules) {
+          setEventRules(parsedRules);
         }
 
         const storedPassword = await AsyncStorage.getItem(ADMIN_PASSWORD_KEY);
@@ -160,7 +189,21 @@ export function AdminConfigProvider({ children }) {
         typeof newConfigOrUpdater === 'function'
           ? newConfigOrUpdater(config)
           : { ...config, ...newConfigOrUpdater };
+      
       setConfig(updated);
+      
+      // Salva no backend
+      try {
+        await fetch(`${API_URL}/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated)
+        });
+      } catch (err) {
+        console.warn('Erro ao salvar no backend', err);
+      }
+
+      // Fallback
       await AsyncStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(updated));
     } catch (e) {
       console.warn('Erro ao salvar configuração:', e);
@@ -171,17 +214,32 @@ export function AdminConfigProvider({ children }) {
   const setEventPhotographerRule = async (eventId, photographerId, ruleUpdate) => {
     if (!eventId || !photographerId) return;
     try {
+      const updatedRule = {
+        ...(eventRules[eventId]?.[photographerId] || { isHidden: false, order: 1 }),
+        ...ruleUpdate,
+      };
+
       const updated = {
         ...eventRules,
         [eventId]: {
           ...(eventRules[eventId] || {}),
-          [photographerId]: {
-            ...(eventRules[eventId]?.[photographerId] || { isHidden: false, order: 1 }),
-            ...ruleUpdate,
-          },
+          [photographerId]: updatedRule,
         },
       };
       setEventRules(updated);
+
+      // Salva no backend
+      try {
+        await fetch(`${API_URL}/events/rules`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventId, photographerId, ruleUpdate: updatedRule })
+        });
+      } catch (err) {
+        console.warn('Erro ao salvar regra no backend', err);
+      }
+
+      // Fallback
       await AsyncStorage.setItem(EVENT_RULES_STORAGE_KEY, JSON.stringify(updated));
     } catch (err) {
       console.warn('Erro ao salvar regra do evento:', err);
