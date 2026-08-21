@@ -429,87 +429,98 @@ export default function EventDetails() {
     } catch {}
   };
 
-  // If we only have slug or eventParam without id, resolve event from API
+  // ─── FLUXO UNIFICADO DE CARREGAMENTO (SEM PISCAMENTO E SEM VAZAMENTO DE FOTOS PRIVADAS) ───
   useEffect(() => {
-    if (id) return;
+    if (!adminConfigLoaded) return;
     let active = true;
-    const resolveEvent = async () => {
-      try {
-        const response = await fetchEvents();
-        if (!response.ok) return;
-        const data = await response.json();
-        const found = data.results?.find(
-          (event) => event.id === initialId || (initialSlug && event.slug === initialSlug)
-        );
-        if (active && found) {
-          setId(found.id);
-          setEventData(found);
-        } else if (active) {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.warn('resolveEvent error:', error);
-        if (active) setLoading(false);
-      }
-    };
-    resolveEvent();
-    return () => {
-      active = false;
-    };
-  }, [id, initialId, initialSlug]);
 
-  useEffect(() => {
-    if (!adminConfigLoaded) return; // Espera eventRules carregar do storage
-    if (id && id !== 'undefined') {
-      initializeCartForEvent(id);
-      // Limpa cache ao recarregar (regras podem ter mudado)
-      photosCacheRef.current = {};
-      const slug = eventData?.slug || eventParam?.slug || initialSlug;
-      if (slug) {
-        fetchEventPrivacy(slug).then((isPriv) => {
-          setIsPrivateEvent(Boolean(isPriv));
-          if (!isPriv) {
-            loadPhotosData(1, 'photo');
-          } else {
-            setLoading(false);
-            setPhotos([]);
+    const initializeEventPage = async () => {
+      setLoading(true);
+
+      // 1. Resolve ID se não estiver setado inicialmente
+      let currentId = id;
+      if (!currentId && (initialId || initialSlug)) {
+        try {
+          const response = await fetchEvents();
+          if (response.ok) {
+            const data = await response.json();
+            const found = (data.results || []).find(
+              (e) => e.id === initialId || (initialSlug && e.slug === initialSlug)
+            );
+            if (found) {
+              currentId = found.id;
+              if (active) {
+                setId(found.id);
+                setEventData(found);
+              }
+            }
           }
-        });
-      } else {
-        loadPhotosData(1, 'photo');
+        } catch (err) {
+          console.warn('resolveEvent error:', err);
+        }
       }
+
+      if (!currentId || currentId === 'undefined') {
+        if (active) setLoading(false);
+        return;
+      }
+
+      initializeCartForEvent(currentId);
+      photosCacheRef.current = {};
+
+      // 2. Garante dados completos do evento (Nome, Cidade, Data, Slug)
+      let currentEvent = eventData;
+      if (!currentEvent || !currentEvent.name || !currentEvent.city) {
+        try {
+          const res = await fetchEventById(currentId);
+          if (res.ok) {
+            const data = await res.json();
+            if (active && data && (data.name || data.id)) {
+              currentEvent = data;
+              setEventData(data);
+            }
+          }
+        } catch (e) {
+          console.warn('fetchEventById error:', e);
+        }
+      }
+
+      // 3. Checa Privacidade ANTES de carregar qualquer foto
+      const slug = currentEvent?.slug || initialSlug;
+      let isPriv = false;
+      if (slug) {
+        try {
+          isPriv = await fetchEventPrivacy(slug);
+        } catch (e) {
+          console.warn('fetchEventPrivacy error:', e);
+        }
+      } else if (currentEvent?.is_private !== undefined) {
+        isPriv = Boolean(currentEvent.is_private);
+      }
+
+      if (!active) return;
+
+      setIsPrivateEvent(Boolean(isPriv));
+
+      // 4. Se for privado, finaliza e NÃO busca fotos públicas
+      if (isPriv) {
+        setPhotos([]);
+        setLoading(false);
+      } else {
+        // Se for público, busca as fotos
+        await loadPhotosData(1, 'photo');
+      }
+
       loadMediaCount('video');
       loadMediaCount('photo');
-    }
-  }, [id, eventData?.slug, eventParam?.slug, initialSlug, adminConfigLoaded, config?.eventsConfig?.onlyOwnerPhotos]);
-
-  // Busca sempre os dados completos do evento pelo ID na API (para links diretos ou dados incompletos)
-  useEffect(() => {
-    if (!id || id === 'undefined') return;
-    let active = true;
-    const loadEvent = async () => {
-      try {
-        const res = await fetchEventById(id);
-        if (res.ok) {
-          const data = await res.json();
-          if (active && data && (data.name || data.id)) {
-            setEventData(data);
-          }
-        }
-      } catch (e) {
-        console.warn('loadEvent error:', e);
-      }
     };
 
-    // Executa a busca se não tiver os dados completos (nome ou cidade)
-    if (!eventData || !eventData.name || !eventData.city) {
-      loadEvent();
-    }
+    initializeEventPage();
 
     return () => {
       active = false;
     };
-  }, [id, eventData]);
+  }, [id, initialId, initialSlug, adminConfigLoaded, config?.eventsConfig?.onlyOwnerPhotos]);
 
   useEffect(() => {
     if (typeof document === 'undefined' || !id) return undefined;
@@ -997,6 +1008,17 @@ export default function EventDetails() {
       </View>
     );
   };
+
+  if (loading && !eventData) {
+    return (
+      <View style={[styles.container, { alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }]}>
+        <ActivityIndicator size="large" color="var(--primary-color)" />
+        <Text style={{ marginTop: 16, fontSize: 14, color: '#64748B', fontWeight: '600' }}>
+          Carregando galeria do evento...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
