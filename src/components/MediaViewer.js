@@ -397,71 +397,15 @@ export default function MediaViewer({
                 containerHeight={mediaHeight}
               />
             ) : (
-              Platform.OS === 'web' ? (
-                <View
-                  style={[
-                    styles.protectedPreviewStage,
-                    { width: previewWidth, height: mediaHeight },
-                  ]}
-                  onMouseEnter={(event) => {
-                    updateLensPosition(event);
-                    setLensActive(true);
-                  }}
-                  onMouseMove={updateLensPosition}
-                  onMouseLeave={() => setLensActive(false)}
-                  onTouchStart={(event) => {
-                    updateLensPosition(event);
-                    setLensActive(true);
-                  }}
-                  onTouchMove={updateLensPosition}
-                  onTouchEnd={() => setLensActive(false)}
-                  onTouchCancel={() => setLensActive(false)}
-                >
-                  <Image
-                    source={{ uri: currentMedia.watermark_path }}
-                    style={styles.blurredPreviewImage}
-                    resizeMode="contain"
-                    draggable={false}
-                  />
-                  {lensActive && (
-                    <>
-                      <Image
-                        source={{ uri: currentMedia.watermark_path }}
-                        style={[
-                          styles.clearPreviewLens,
-                          {
-                            clipPath: `circle(${lensRadius}px at ${lensPosition.x}px ${lensPosition.y}px)`,
-                          },
-                        ]}
-                        resizeMode="contain"
-                        draggable={false}
-                      />
-                      <View
-                        pointerEvents="none"
-                        style={[
-                          styles.previewLensRing,
-                          {
-                            width: lensRadius * 2,
-                            height: lensRadius * 2,
-                            borderRadius: lensRadius,
-                            left: lensPosition.x - lensRadius,
-                            top: lensPosition.y - lensRadius,
-                          },
-                        ]}
-                      />
-                    </>
-                  )}
-                </View>
-              ) : (
-                <Image
-                  source={{ uri: currentMedia.watermark_path }}
-                  style={[
-                    styles.mediaImage,
-                    { width: previewWidth, height: mediaHeight },
-                  ]}
-                  resizeMode="contain"
-                />
-              )
+                            <Image
+                source={{ uri: currentMedia.watermark_path }}
+                style={[
+                  styles.mediaImage,
+                  { width: previewWidth, height: mediaHeight },
+                ]}
+                resizeMode="contain"
+                draggable={false}
+              />
             )}
           </Animated.View>
         )}
