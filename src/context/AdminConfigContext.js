@@ -74,6 +74,7 @@ export const DEFAULT_CONFIG = {
     mergeSharedEvents: true,
     hiddenEventIds: [],
     featuredEventIds: [],
+    onlyOwnerPhotos: false,
   },
 
   // ── 6. TEXTOS DOS PASSOS "COMO FUNCIONA" ──────────────────────────────────

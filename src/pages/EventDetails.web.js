@@ -236,7 +236,7 @@ export default function EventDetails() {
   const [isPrivateEvent, setIsPrivateEvent] = useState(false);
   const photosCacheRef = useRef({});
 
-  const { eventRules, isLoaded: adminConfigLoaded } = useAdminConfig();
+  const { eventRules, config, isLoaded: adminConfigLoaded } = useAdminConfig();
 
   const { addToCart, removeFromCart, isInCart, initializeCartForEvent } =
     useCart();
@@ -245,6 +245,13 @@ export default function EventDetails() {
   // Determina os fotógrafos visíveis para filtrar direto pela API
   const getActivePhotographerFilter = (eventId) => {
     if (!eventId || !adminConfigLoaded) return null;
+
+    // Se o modo exclusivo de fotos do dono estiver ativado globalmente:
+    if (config?.eventsConfig?.onlyOwnerPhotos) {
+      const primary = (config.photographers || []).find((p) => p.isPrimary) || { id: DEFAULT_PHOTOGRAPHER_ID };
+      return [primary.id || DEFAULT_PHOTOGRAPHER_ID];
+    }
+
     const rules = eventRules[eventId] || {};
     const allPhotogIds = Object.keys(rules);
     // Se não há regras configuradas para este evento, sem filtro
@@ -263,6 +270,22 @@ export default function EventDetails() {
 
   // Helper para filtrar e ordenar fotos de acordo com as regras ativas do evento
   const processPhotosByEventRules = (loadedPhotos, eventId) => {
+    // 0. Modo exclusivo: apenas fotos do dono do site (Rafael Publicado)
+    if (config?.eventsConfig?.onlyOwnerPhotos) {
+      const primary = (config.photographers || []).find((p) => p.isPrimary) || { id: DEFAULT_PHOTOGRAPHER_ID };
+      const primaryId = primary.id || DEFAULT_PHOTOGRAPHER_ID;
+      return (loadedPhotos || []).filter((p) => {
+        const photogId = p.photographer || p.photographer_id || p.owner;
+        const photogName = (p.photographer_name || '').toLowerCase();
+        return (
+          photogId === primaryId ||
+          photogId === DEFAULT_PHOTOGRAPHER_ID ||
+          photogName.includes('rafael') ||
+          photogName.includes('publicado')
+        );
+      });
+    }
+
     const rules = eventRules[eventId] || {};
 
     // 1. Filtra fotos de fotógrafos marcados como ocultos
@@ -601,11 +624,10 @@ export default function EventDetails() {
     setFaceSearchError('');
     try {
       const imageDataUrl = await prepareFaceImage(imageSource);
-      const photographerId =
-        eventData?.owner?.id ||
-        eventData?.photographer?.id ||
-        eventData?.photographer ||
-        DEFAULT_PHOTOGRAPHER_ID;
+      const primary = (config?.photographers || []).find((p) => p.isPrimary) || { id: DEFAULT_PHOTOGRAPHER_ID };
+      const photographerId = config?.eventsConfig?.onlyOwnerPhotos
+        ? (primary.id || DEFAULT_PHOTOGRAPHER_ID)
+        : (eventData?.owner?.id || eventData?.photographer?.id || eventData?.photographer || DEFAULT_PHOTOGRAPHER_ID);
       const res = await searchByFace(id, imageDataUrl, photographerId);
       if (res.ok) {
         const data = await res.json();

@@ -503,6 +503,74 @@ export default function AdminPanel() {
               </Text>
             </View>
 
+
+            {/* ── BOTÃO SIMPLES: APENAS FOTOS DO DONO DO SITE ── */}
+            <View
+              style={[
+                styles.cardBox,
+                {
+                  borderColor: config.eventsConfig?.onlyOwnerPhotos ? '#16A34A' : '#E2E8F0',
+                  borderWidth: 2,
+                  backgroundColor: config.eventsConfig?.onlyOwnerPhotos ? '#F0FDF4' : '#FFFFFF',
+                  marginBottom: 20,
+                },
+              ]}
+            >
+              <View style={styles.cardBoxHeaderBetween}>
+                <View style={{ flex: 1, paddingRight: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <ShieldCheck
+                      size={22}
+                      color={config.eventsConfig?.onlyOwnerPhotos ? '#16A34A' : 'var(--primary-color)'}
+                    />
+                    <Text
+                      style={[
+                        styles.cardBoxTitle,
+                        {
+                          fontSize: 16,
+                          marginBottom: 0,
+                          color: config.eventsConfig?.onlyOwnerPhotos ? '#15803D' : '#0F172A',
+                        },
+                      ]}
+                    >
+                      Exibir Apenas Fotos do Dono (Rafael Publicado)
+                    </Text>
+                  </View>
+                  <Text style={[styles.fieldHint, { fontSize: 13, color: '#475569', marginTop: 4, lineHeight: 18 }]}>
+                    {config.eventsConfig?.onlyOwnerPhotos
+                      ? '✓ ATIVADO: Na página de venda de fotos de todos os eventos, serão exibidas APENAS as fotos de Rafael Publicado. As fotos dos outros fotógrafos parceiros estão ocultadas automaticamente da compra.'
+                      : 'Quando ativado, a página de venda de fotos de todos os eventos exibirá exclusivamente as fotos do proprietário do site, ocultando fotos de outros fotógrafos.'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.btnToggle,
+                    config.eventsConfig?.onlyOwnerPhotos
+                      ? { backgroundColor: '#16A34A', borderColor: '#15803D' }
+                      : styles.btnToggleInactive,
+                    { minWidth: 170, paddingHorizontal: 16, paddingVertical: 12, height: 'auto' },
+                  ]}
+                  onPress={async () => {
+                    const newVal = !config.eventsConfig?.onlyOwnerPhotos;
+                    await updateConfig((prev) => ({
+                      ...prev,
+                      eventsConfig: {
+                        ...(prev.eventsConfig || {}),
+                        onlyOwnerPhotos: newVal,
+                      },
+                    }));
+                    showSavedBadge();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.btnToggleText, { color: '#FFFFFF', fontWeight: '800', fontSize: 13 }]}>
+                    {config.eventsConfig?.onlyOwnerPhotos ? 'ATIVADO (SÓ DONO) ✓' : 'DESATIVADO (TODOS)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Seletor de Evento */}
             <View style={styles.cardBox}>
               <Text style={styles.cardBoxTitle}>1. Selecione o Evento para Configurar</Text>
@@ -702,6 +770,74 @@ export default function AdminPanel() {
               <Text style={styles.sectionDesc}>
                 Adicione outros fotógrafos usando o link do perfil público da Top Fotos (ex: https://topfotos.com.br/perfil/nome-do-fotografo). As fotos e eventos deles serão sincronizados e integrados à sua loja.
               </Text>
+            </View>
+
+
+            {/* ── BOTÃO SIMPLES: APENAS FOTOS DO DONO DO SITE ── */}
+            <View
+              style={[
+                styles.cardBox,
+                {
+                  borderColor: config.eventsConfig?.onlyOwnerPhotos ? '#16A34A' : '#E2E8F0',
+                  borderWidth: 2,
+                  backgroundColor: config.eventsConfig?.onlyOwnerPhotos ? '#F0FDF4' : '#FFFFFF',
+                  marginBottom: 20,
+                },
+              ]}
+            >
+              <View style={styles.cardBoxHeaderBetween}>
+                <View style={{ flex: 1, paddingRight: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <ShieldCheck
+                      size={22}
+                      color={config.eventsConfig?.onlyOwnerPhotos ? '#16A34A' : 'var(--primary-color)'}
+                    />
+                    <Text
+                      style={[
+                        styles.cardBoxTitle,
+                        {
+                          fontSize: 16,
+                          marginBottom: 0,
+                          color: config.eventsConfig?.onlyOwnerPhotos ? '#15803D' : '#0F172A',
+                        },
+                      ]}
+                    >
+                      Exibir Apenas Fotos do Dono (Rafael Publicado)
+                    </Text>
+                  </View>
+                  <Text style={[styles.fieldHint, { fontSize: 13, color: '#475569', marginTop: 4, lineHeight: 18 }]}>
+                    {config.eventsConfig?.onlyOwnerPhotos
+                      ? '✓ ATIVADO: Na página de venda de fotos de todos os eventos, serão exibidas APENAS as fotos de Rafael Publicado. As fotos dos outros fotógrafos parceiros estão ocultadas automaticamente da compra.'
+                      : 'Quando ativado, a página de venda de fotos de todos os eventos exibirá exclusivamente as fotos do proprietário do site, ocultando fotos de outros fotógrafos.'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.btnToggle,
+                    config.eventsConfig?.onlyOwnerPhotos
+                      ? { backgroundColor: '#16A34A', borderColor: '#15803D' }
+                      : styles.btnToggleInactive,
+                    { minWidth: 170, paddingHorizontal: 16, paddingVertical: 12, height: 'auto' },
+                  ]}
+                  onPress={async () => {
+                    const newVal = !config.eventsConfig?.onlyOwnerPhotos;
+                    await updateConfig((prev) => ({
+                      ...prev,
+                      eventsConfig: {
+                        ...(prev.eventsConfig || {}),
+                        onlyOwnerPhotos: newVal,
+                      },
+                    }));
+                    showSavedBadge();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.btnToggleText, { color: '#FFFFFF', fontWeight: '800', fontSize: 13 }]}>
+                    {config.eventsConfig?.onlyOwnerPhotos ? 'ATIVADO (SÓ DONO) ✓' : 'DESATIVADO (TODOS)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Card para Adicionar Novo Fotógrafo */}
