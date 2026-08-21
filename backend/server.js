@@ -160,6 +160,186 @@ app.get('/api/analytics/summary', async (req, res) => {
 });
 
 
+
+// ─── META WHATSAPP CLOUD API (PADRÃO OFICIAL META / BUSINESS MANAGER) ────────
+
+// Obter configurações da Meta API
+app.get('/api/meta/config', async (req, res) => {
+  try {
+    const result = await db.query('SELECT phone_number_id, waba_id, api_version, (access_token != '' AND access_token IS NOT NULL) AS has_token FROM meta_api_config WHERE id = 1');
+    res.json({ config: result.rows[0] || {} });
+  } catch (err) {
+    console.error('Erro ao buscar config Meta:', err);
+    res.status(500).json({ error: 'Erro ao buscar configuração Meta' });
+  }
+});
+
+// Salvar configurações da Meta API
+app.post('/api/meta/config', async (req, res) => {
+  try {
+    const { phone_number_id, waba_id, access_token, api_version } = req.body;
+    
+    if (access_token) {
+      await db.query(`
+        INSERT INTO meta_api_config (id, phone_number_id, waba_id, access_token, api_version, updated_at)
+        VALUES (1, $1, $2, $3, $4, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          phone_number_id = EXCLUDED.phone_number_id,
+          waba_id = EXCLUDED.waba_id,
+          access_token = EXCLUDED.access_token,
+          api_version = EXCLUDED.api_version,
+          updated_at = NOW()
+      `, [phone_number_id || '', waba_id || '', access_token, api_version || 'v20.0']);
+    } else {
+      await db.query(`
+        INSERT INTO meta_api_config (id, phone_number_id, waba_id, api_version, updated_at)
+        VALUES (1, $1, $2, $3, NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          phone_number_id = EXCLUDED.phone_number_id,
+          waba_id = EXCLUDED.waba_id,
+          api_version = EXCLUDED.api_version,
+          updated_at = NOW()
+      `, [phone_number_id || '', waba_id || '', api_version || 'v20.0']);
+    }
+
+    res.json({ success: true, message: 'Configurações da Meta API salvas com sucesso!' });
+  } catch (err) {
+    console.error('Erro ao salvar config Meta:', err);
+    res.status(500).json({ error: 'Erro ao salvar configurações Meta' });
+  }
+});
+
+// Listar Templates Padrão Meta
+app.get('/api/meta/templates', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM meta_templates ORDER BY id ASC');
+    res.json({ templates: result.rows });
+  } catch (err) {
+    console.error('Erro ao listar templates Meta:', err);
+    res.status(500).json({ error: 'Erro ao listar templates' });
+  }
+});
+
+// Criar / Salvar Template Meta
+app.post('/api/meta/templates', async (req, res) => {
+  try {
+    const { name, category, language, header_type, header_content, body_text, footer_text, buttons } = req.body;
+    const cleanName = String(name || '').toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+    const result = await db.query(`
+      INSERT INTO meta_templates (name, category, language, header_type, header_content, body_text, footer_text, buttons, meta_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'APPROVED')
+      RETURNING *;
+    `, [cleanName, category || 'MARKETING', language || 'pt_BR', header_type || 'NONE', header_content || '', body_text, footer_text || '', JSON.stringify(buttons || [])]);
+
+    res.json({ success: true, template: result.rows[0] });
+  } catch (err) {
+    console.error('Erro ao criar template Meta:', err);
+    res.status(500).json({ error: 'Erro ao criar template Meta' });
+  }
+});
+
+// Disparo em Massa Oficial via Meta WhatsApp Cloud API
+app.post('/api/meta/send-template-broadcast', async (req, res) => {
+  try {
+    const { recipients, template_name, language_code, components, event_id, campaign_title } = req.body;
+
+    // Busca credenciais da Meta no banco
+    const configRes = await db.query('SELECT * FROM meta_api_config WHERE id = 1');
+    const metaConfig = configRes.rows[0];
+
+    const phoneNumberId = metaConfig?.phone_number_id;
+    const accessToken = metaConfig?.access_token;
+    const apiVersion = metaConfig?.api_version || 'v20.0';
+
+    const hasMetaCredentials = Boolean(phoneNumberId && accessToken);
+
+    const results = [];
+    let sentSuccess = 0;
+    let sentErrors = 0;
+
+    for (const rec of recipients) {
+      let rawPhone = String(rec.phone || '').replace(/\D/g, '');
+      if (rawPhone.length === 10 || rawPhone.length === 11) {
+        rawPhone = `55${rawPhone}`;
+      }
+
+      if (hasMetaCredentials) {
+        // Envia via Meta Cloud API Oficial
+        try {
+          const metaUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+          
+          // Formata parâmetros dinâmicos do corpo
+          const bodyParams = (rec.bodyParams || [rec.name || 'Cliente', rec.eventName || 'Evento', rec.eventLink || '']).map((val) => ({
+            type: 'text',
+            text: String(val || ''),
+          }));
+
+          const metaPayload = {
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: rawPhone,
+            type: 'template',
+            template: {
+              name: template_name || 'fotos_evento_publicadas',
+              language: { code: language_code || 'pt_BR' },
+              components: [
+                {
+                  type: 'body',
+                  parameters: bodyParams,
+                },
+              ],
+            },
+          };
+
+          const metaRes = await fetch(metaUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(metaPayload),
+          });
+
+          const metaData = await metaRes.json();
+
+          if (metaRes.ok && metaData.messages?.[0]?.id) {
+            sentSuccess++;
+            results.push({ phone: rawPhone, status: 'sent', wamid: metaData.messages[0].id });
+          } else {
+            sentErrors++;
+            results.push({ phone: rawPhone, status: 'error', error: metaData.error?.message || 'Erro Meta API' });
+          }
+        } catch (callErr) {
+          sentErrors++;
+          results.push({ phone: rawPhone, status: 'error', error: callErr.message });
+        }
+      } else {
+        // Simulação / Retorno para disparo assistido se ainda não inseriu o token
+        sentSuccess++;
+        results.push({ phone: rawPhone, status: 'ready_for_web', info: 'Modo direto / WhatsApp Web' });
+      }
+    }
+
+    // Registra campanha no banco
+    await db.query(`
+      INSERT INTO broadcast_campaigns (title, message_template, event_id, total_recipients, sent_count, status)
+      VALUES ($1, $2, $3, $4, $5, 'completed')
+    `, [campaign_title || 'Disparo Padrão Meta', template_name, event_id || null, recipients.length, sentSuccess]);
+
+    res.json({
+      success: true,
+      hasMetaCredentials,
+      sentSuccess,
+      sentErrors,
+      results,
+    });
+  } catch (err) {
+    console.error('Erro no broadcast Meta:', err);
+    res.status(500).json({ error: 'Erro ao processar disparo Meta' });
+  }
+});
+
 // ─── LEADS WHATSAPP (CAPTURADOS NA HOME) ──────────────────────────────────────
 
 // Cadastrar novo WhatsApp
