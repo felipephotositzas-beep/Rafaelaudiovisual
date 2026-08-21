@@ -17,10 +17,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import {
-  allowScreenCaptureAsync,
-  preventScreenCaptureAsync,
-} from 'expo-screen-capture';
-import {
   X,
   ChevronLeft,
   ChevronRight,
@@ -32,8 +28,10 @@ import {
   Video as VideoIcon,
   Camera,
   Play,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { useCart } from '../context/CartContext';
+import ScreenCaptureGuard from './ScreenCaptureGuard';
 import {
   Colors,
   DarkPalette,
@@ -45,10 +43,9 @@ import {
 } from '../constants/theme';
 
 const SWIPE_THRESHOLD = 60;
-const CAPTURE_KEY = 'media-viewer';
 
 function VideoMedia({ media, containerWidth, containerHeight }) {
-  const videoUrl = media.preview_video_path || media.delivery_path;
+  const videoUrl = media.preview_video_path;
   const isHorizontal = !!media.horizontal;
 
   // Calculate ideal video dimensions to avoid stretching controls across entire screen
@@ -160,22 +157,13 @@ export default function MediaViewer({
 }) {
   const insets = useSafeAreaInsets();
   const [localIndex, setLocalIndex] = useState(currentIndex);
+  const [captureShielded, setCaptureShielded] = useState(false);
   const translateX = useRef(new Animated.Value(0)).current;
   const { addToCart, removeFromCart, isInCart } = useCart();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const isDesktop = screenWidth >= 768;
   const mediaHeight = Math.max(260, screenHeight - 160);
-
-  useEffect(() => {
-    preventScreenCaptureAsync(CAPTURE_KEY).catch((error) => {
-      console.warn('Não foi possível ativar a proteção da mídia.', error);
-    });
-
-    return () => {
-      allowScreenCaptureAsync(CAPTURE_KEY).catch(() => {});
-    };
-  }, []);
 
   useEffect(() => {
     setLocalIndex(currentIndex);
@@ -250,6 +238,11 @@ export default function MediaViewer({
       onRequestClose={onClose}
       statusBarTranslucent
     >
+      <ScreenCaptureGuard
+        active={Platform.OS === 'web'}
+        captureKey="media-viewer"
+        onProtectionChange={setCaptureShielded}
+      />
       <StatusBar
         backgroundColor="transparent"
         barStyle="light-content"
@@ -286,7 +279,7 @@ export default function MediaViewer({
               </Text>
             </View>
 
-            {currentMedia.short_reference && (
+            {currentMedia.short_reference && isDesktop && (
               <Text style={styles.mediaRef}>
                 #{currentMedia.short_reference}
               </Text>
@@ -334,35 +327,53 @@ export default function MediaViewer({
         </View>
 
         {/* ─── MEDIA DISPLAY AREA ───────────────────────────────────────────── */}
-        <Animated.View
-          style={[
-            styles.mediaContainer,
-            {
-              width: screenWidth,
-              height: mediaHeight,
-              transform: [{ translateX }],
-            },
-          ]}
-          {...(currentMedia.is_video ? {} : panResponder.panHandlers)}
-        >
-          {currentMedia.is_video ? (
-            <VideoMedia
-              key={`video-${currentMedia.id}`}
-              media={currentMedia}
-              containerWidth={screenWidth}
-              containerHeight={mediaHeight}
-            />
-          ) : (
-            <Image
-              source={{ uri: currentMedia.watermark_path }}
-              style={[
-                styles.mediaImage,
-                { width: screenWidth - 32, height: mediaHeight },
-              ]}
-              resizeMode="contain"
-            />
-          )}
-        </Animated.View>
+        {captureShielded ? (
+          <View
+            style={[
+              styles.mediaContainer,
+              styles.captureShield,
+              { width: screenWidth, height: mediaHeight },
+            ]}
+            accessibilityRole="alert"
+          >
+            <ShieldCheck size={42} color="#F8FAFC" />
+            <Text style={styles.captureShieldTitle}>Conteúdo protegido</Text>
+            <Text style={styles.captureShieldText}>
+              Volte para esta página para continuar visualizando.
+            </Text>
+          </View>
+        ) : (
+          <Animated.View
+            dataSet={{ protectedMedia: 'true' }}
+            style={[
+              styles.mediaContainer,
+              {
+                width: screenWidth,
+                height: mediaHeight,
+                transform: [{ translateX }],
+              },
+            ]}
+            {...(currentMedia.is_video ? {} : panResponder.panHandlers)}
+          >
+            {currentMedia.is_video ? (
+              <VideoMedia
+                key={`video-${currentMedia.id}`}
+                media={currentMedia}
+                containerWidth={screenWidth}
+                containerHeight={mediaHeight}
+              />
+            ) : (
+              <Image
+                source={{ uri: currentMedia.watermark_path }}
+                style={[
+                  styles.mediaImage,
+                  { width: screenWidth - 32, height: mediaHeight },
+                ]}
+                resizeMode="contain"
+              />
+            )}
+          </Animated.View>
+        )}
 
         {/* ─── NAVIGATION ARROWS ───────────────────────────────────────────── */}
         {localIndex > 0 && (
@@ -560,6 +571,22 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   mediaImage: {},
+  captureShield: {
+    gap: 10,
+    paddingHorizontal: 28,
+    backgroundColor: '#070B14',
+  },
+  captureShieldTitle: {
+    color: '#F8FAFC',
+    fontSize: 18,
+    fontWeight: FontWeights.bold,
+    textAlign: 'center',
+  },
+  captureShieldText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+  },
 
   // Video Card
   videoCard: {

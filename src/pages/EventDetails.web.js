@@ -705,6 +705,8 @@ export default function EventDetails() {
     return (
       <View
         key={photo.id || index}
+        dataSet={{ protectedMedia: 'true' }}
+        onContextMenu={(event) => event.preventDefault()}
         style={[
           styles.photoCard,
           isMobile && styles.photoCardMobile,
@@ -723,6 +725,7 @@ export default function EventDetails() {
         >
           <Image
             source={{ uri: photo.watermark_path }}
+            draggable={false}
             style={styles.photoCardImg}
             resizeMode="cover"
           />

@@ -79,6 +79,15 @@ input, select, textarea {
   border-radius: 8px;
 }
 
+/* Preview assets remain watermarked and cannot be saved by long press or drag. */
+[data-protected-media="true"],
+[data-protected-media="true"] * {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Scrollbar Clean */
 ::-webkit-scrollbar {
   width: 8px;
