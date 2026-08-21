@@ -242,6 +242,19 @@ export default function EventDetails() {
     useCart();
   const discountTiers = getProgressiveDiscountTiers(eventData);
 
+  // Determina se há um fotógrafo específico ativo/selecionado com prioridade 1 para buscar direto da API
+  const getActivePhotographerFilter = (eventId) => {
+    if (!eventId) return null;
+    const rules = eventRules[eventId] || {};
+    const visiblePhotogIds = Object.keys(rules).filter((pid) => !rules[pid]?.isHidden);
+    
+    // Se o usuário ocultou os outros e deixou apenas 1 fotógrafo visível, busca direto com photographer_id dele!
+    if (visiblePhotogIds.length === 1) {
+      return visiblePhotogIds[0];
+    }
+    return null;
+  };
+
   // Helper para filtrar e ordenar fotos de acordo com as regras ativas do evento
   const processPhotosByEventRules = (loadedPhotos, eventId) => {
     const rules = eventRules[eventId] || {};
@@ -283,10 +296,11 @@ export default function EventDetails() {
   // Prefetch silencioso da próxima página em background
   const prefetchNextPage = async (nextPage, mediaType) => {
     if (!id || id === 'undefined') return;
-    const cacheKey = `${id}_${mediaType}_${nextPage}`;
+    const photogFilter = getActivePhotographerFilter(id);
+    const cacheKey = `${id}_${mediaType}_${photogFilter || 'all'}_${nextPage}`;
     if (photosCacheRef.current[cacheKey]) return;
     try {
-      const res = await fetchPhotos(id, nextPage, mediaType);
+      const res = await fetchPhotos(id, nextPage, mediaType, photogFilter);
       if (res.ok) {
         const data = await res.json();
         let loaded = processPhotosByEventRules(data.results || [], id);
@@ -429,7 +443,8 @@ export default function EventDetails() {
   const loadMediaCount = async (mediaType) => {
     if (!id || id === 'undefined') return;
     try {
-      const res = await fetchPhotos(id, 1, mediaType);
+      const photogFilter = getActivePhotographerFilter(id);
+      const res = await fetchPhotos(id, 1, mediaType, photogFilter);
       if (!res.ok) return;
       const data = await res.json();
       setMediaCounts((current) => ({
@@ -447,7 +462,8 @@ export default function EventDetails() {
       return;
     }
 
-    const cacheKey = `${id}_${mediaType}_${pageNumber}`;
+    const photogFilter = getActivePhotographerFilter(id);
+    const cacheKey = `${id}_${mediaType}_${photogFilter || 'all'}_${pageNumber}`;
     const cached = photosCacheRef.current[cacheKey];
 
     // 🚀 Se estiver em cache, carrega INSTANTANEAMENTE (0 ms)!
@@ -488,7 +504,7 @@ export default function EventDetails() {
     }
 
     try {
-      const res = await fetchPhotos(id, pageNumber, mediaType);
+      const res = await fetchPhotos(id, pageNumber, mediaType, photogFilter);
       if (res.ok) {
         const data = await res.json();
         let loadedPhotos = processPhotosByEventRules(data.results || [], id);
