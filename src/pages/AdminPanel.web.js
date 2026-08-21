@@ -142,7 +142,7 @@ export default function AdminPanel() {
 
   // Preset Palettes
   const PRESET_PALETTES = [
-    { name: 'Azul Top Fotos (Padrão)', primary: 'var(--primary-color)', deep: "var(--primary-deep)", hover: '#007BF5' },
+    { name: 'Azul Top Fotos (Padrão)', primary: '#006BD6', deep: '#063A78', hover: '#007BF5' },
     { name: 'Dourado / Premium Gold', primary: '#D97706', deep: '#78350F', hover: '#B45309' },
     { name: 'Verde Esmeralda', primary: '#059669', deep: '#064E3B', hover: '#047857' },
     { name: 'Roxo Neon / Creator', primary: '#7C3AED', deep: '#4C1D95', hover: '#6D28D9' },
