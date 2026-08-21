@@ -750,3 +750,344 @@ app.post('/api/events/rules', async (req, res) => {
 app.listen(PORT, () => {
   console.log('Servidor rodando na porta ' + PORT);
 });
+
+// ─── CRM: INICIALIZAR TABELAS ────────────────────────────────────────────────
+async function initCRMTables() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS crm_contacts (
+      id SERIAL PRIMARY KEY,
+      name TEXT,
+      phone TEXT NOT NULL,
+      tags TEXT,
+      source TEXT DEFAULT 'manual',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(phone)
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS crm_lists (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS crm_list_contacts (
+      list_id INT REFERENCES crm_lists(id) ON DELETE CASCADE,
+      contact_id INT REFERENCES crm_contacts(id) ON DELETE CASCADE,
+      PRIMARY KEY (list_id, contact_id)
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS crm_campaigns (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      list_id INT REFERENCES crm_lists(id),
+      template_name TEXT,
+      template_language TEXT DEFAULT 'pt_BR',
+      event_id TEXT,
+      status TEXT DEFAULT 'draft',
+      sent_count INT DEFAULT 0,
+      error_count INT DEFAULT 0,
+      total INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      sent_at TIMESTAMP
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS crm_campaign_logs (
+      id SERIAL PRIMARY KEY,
+      campaign_id INT REFERENCES crm_campaigns(id) ON DELETE CASCADE,
+      contact_id INT,
+      phone TEXT,
+      name TEXT,
+      status TEXT,
+      error_msg TEXT,
+      wamid TEXT,
+      sent_at TIMESTAMP DEFAULT NOW()
+    );
+  `);
+  console.log('CRM tables initialized');
+}
+initCRMTables().catch(console.error);
+
+// ─── CRM: CONTATOS ────────────────────────────────────────────────────────────
+app.get('/api/crm/contacts', async (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = 'SELECT * FROM crm_contacts';
+    let params = [];
+    if (search) { query += ' WHERE name ILIKE $1 OR phone ILIKE $1'; params = [`%${search}%`]; }
+    query += ' ORDER BY created_at DESC';
+    const result = await db.query(query, params);
+    res.json({ contacts: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/crm/contacts', async (req, res) => {
+  try {
+    const { name, phone, tags, notes, source } = req.body;
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return res.status(400).json({ error: 'Telefone inválido' });
+    const result = await db.query(
+      `INSERT INTO crm_contacts (name, phone, tags, notes, source)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name, tags = EXCLUDED.tags, notes = EXCLUDED.notes
+       RETURNING *`,
+      [name || '', cleanPhone, tags || '', notes || '', source || 'manual']
+    );
+    res.json({ contact: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/crm/contacts/import', async (req, res) => {
+  try {
+    const { contacts, source } = req.body;
+    if (!Array.isArray(contacts) || contacts.length === 0) return res.status(400).json({ error: 'Lista vazia' });
+    let imported = 0, skipped = 0;
+    for (const c of contacts) {
+      const p = String(c.phone || '').replace(/\D/g, '');
+      if (!p || p.length < 8) { skipped++; continue; }
+      await db.query(
+        `INSERT INTO crm_contacts (name, phone, tags, source) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (phone) DO UPDATE SET name = COALESCE(EXCLUDED.name, crm_contacts.name)`,
+        [c.name || '', p, c.tags || '', source || 'import']
+      );
+      imported++;
+    }
+    res.json({ success: true, imported, skipped });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/crm/contacts/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM crm_contacts WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── CRM: LISTAS ─────────────────────────────────────────────────────────────
+app.get('/api/crm/lists', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT l.*, COUNT(lc.contact_id)::int AS contact_count
+      FROM crm_lists l
+      LEFT JOIN crm_list_contacts lc ON lc.list_id = l.id
+      GROUP BY l.id ORDER BY l.created_at DESC
+    `);
+    res.json({ lists: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/crm/lists', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome obrigatório' });
+    const result = await db.query(
+      'INSERT INTO crm_lists (name, description) VALUES ($1, $2) RETURNING *',
+      [name, description || '']
+    );
+    res.json({ list: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/crm/lists/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM crm_lists WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/crm/lists/:id/contacts', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT c.* FROM crm_contacts c
+      INNER JOIN crm_list_contacts lc ON lc.contact_id = c.id
+      WHERE lc.list_id = $1 ORDER BY c.name ASC
+    `, [req.params.id]);
+    res.json({ contacts: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/crm/lists/:id/contacts', async (req, res) => {
+  try {
+    const { contact_ids } = req.body;
+    if (!Array.isArray(contact_ids)) return res.status(400).json({ error: 'contact_ids obrigatório' });
+    for (const cid of contact_ids) {
+      await db.query(
+        'INSERT INTO crm_list_contacts (list_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [req.params.id, cid]
+      );
+    }
+    res.json({ success: true, added: contact_ids.length });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/crm/lists/:listId/contacts/:contactId', async (req, res) => {
+  try {
+    await db.query('DELETE FROM crm_list_contacts WHERE list_id = $1 AND contact_id = $2',
+      [req.params.listId, req.params.contactId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── CRM: CAMPANHAS ──────────────────────────────────────────────────────────
+app.get('/api/crm/campaigns', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT c.*, l.name AS list_name
+      FROM crm_campaigns c
+      LEFT JOIN crm_lists l ON l.id = c.list_id
+      ORDER BY c.created_at DESC
+    `);
+    res.json({ campaigns: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/crm/campaigns', async (req, res) => {
+  try {
+    const { name, list_id, template_name, template_language, event_id } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome obrigatório' });
+    const result = await db.query(
+      `INSERT INTO crm_campaigns (name, list_id, template_name, template_language, event_id, status)
+       VALUES ($1, $2, $3, $4, $5, 'draft') RETURNING *`,
+      [name, list_id || null, template_name || '', template_language || 'pt_BR', event_id || null]
+    );
+    res.json({ campaign: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/crm/campaigns/:id', async (req, res) => {
+  try {
+    const { name, list_id, template_name, template_language, event_id } = req.body;
+    const result = await db.query(
+      `UPDATE crm_campaigns SET name=$1, list_id=$2, template_name=$3, template_language=$4, event_id=$5
+       WHERE id=$6 RETURNING *`,
+      [name, list_id || null, template_name || '', template_language || 'pt_BR', event_id || null, req.params.id]
+    );
+    res.json({ campaign: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/crm/campaigns/:id', async (req, res) => {
+  try {
+    const camp = await db.query('SELECT * FROM crm_campaigns WHERE id = $1', [req.params.id]);
+    if (!camp.rows[0]) return res.status(404).json({ error: 'Não encontrada' });
+    const logs = await db.query(
+      'SELECT * FROM crm_campaign_logs WHERE campaign_id = $1 ORDER BY sent_at DESC',
+      [req.params.id]
+    );
+    res.json({ campaign: camp.rows[0], logs: logs.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/crm/campaigns/:id', async (req, res) => {
+  try {
+    await db.query('DELETE FROM crm_campaigns WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/crm/campaigns/:id/launch', async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const campRes = await db.query('SELECT * FROM crm_campaigns WHERE id = $1', [campaignId]);
+    const campaign = campRes.rows[0];
+    if (!campaign) return res.status(404).json({ error: 'Campanha não encontrada' });
+    if (campaign.status === 'running') return res.status(400).json({ error: 'Campanha já rodando' });
+
+    const metaRes = await db.query('SELECT * FROM meta_api_config WHERE id = 1');
+    const metaConfig = metaRes.rows[0];
+    if (!metaConfig?.phone_number_id || !metaConfig?.access_token)
+      return res.status(400).json({ error: 'Credenciais Meta não configuradas' });
+
+    let contacts = [];
+    if (campaign.list_id) {
+      const cRes = await db.query(`
+        SELECT c.* FROM crm_contacts c
+        INNER JOIN crm_list_contacts lc ON lc.contact_id = c.id
+        WHERE lc.list_id = $1
+      `, [campaign.list_id]);
+      contacts = cRes.rows;
+    }
+    if (contacts.length === 0) return res.status(400).json({ error: 'Lista sem contatos' });
+
+    const effectiveEventId = campaign.event_id || '';
+    let eventName = 'Evento';
+    let eventLink = 'https://rafaelpublicado.com.br';
+    if (effectiveEventId) {
+      try {
+        const evRes = await fetch(`https://painel.topfotos.com.br/api/event/retrieve?event_id=${effectiveEventId}`);
+        if (evRes.ok) { const evData = await evRes.json(); if (evData.name) eventName = evData.name; }
+      } catch {}
+      eventLink = `https://rafaelpublicado.com.br/evento/${effectiveEventId}`;
+    }
+
+    await db.query("UPDATE crm_campaigns SET status = 'running' WHERE id = $1", [campaignId]);
+
+    const apiVersion = metaConfig.api_version || 'v20.0';
+    const metaUrl = `https://graph.facebook.com/${apiVersion}/${metaConfig.phone_number_id}/messages`;
+    let sentCount = 0, errorCount = 0;
+
+    for (const contact of contacts) {
+      let phone = String(contact.phone || '').replace(/\D/g, '');
+      if (phone.length === 10 || phone.length === 11) phone = `55${phone}`;
+
+      const metaPayload = {
+        messaging_product: 'whatsapp', recipient_type: 'individual', to: phone, type: 'template',
+        template: {
+          name: campaign.template_name,
+          language: { code: campaign.template_language || 'pt_BR' },
+          components: [{ type: 'body', parameters: [
+            { type: 'text', text: contact.name || 'Cliente' },
+            { type: 'text', text: eventName },
+            { type: 'text', text: eventLink },
+          ]}],
+        },
+      };
+
+      try {
+        const mRes = await fetch(metaUrl, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${metaConfig.access_token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(metaPayload),
+        });
+        const mData = await mRes.json();
+        if (mRes.ok && mData.messages?.[0]?.id) {
+          sentCount++;
+          await db.query(
+            `INSERT INTO crm_campaign_logs (campaign_id, contact_id, phone, name, status, wamid)
+             VALUES ($1, $2, $3, $4, 'sent', $5)`,
+            [campaignId, contact.id, phone, contact.name, mData.messages[0].id]
+          );
+        } else {
+          errorCount++;
+          await db.query(
+            `INSERT INTO crm_campaign_logs (campaign_id, contact_id, phone, name, status, error_msg)
+             VALUES ($1, $2, $3, $4, 'error', $5)`,
+            [campaignId, contact.id, phone, contact.name, mData.error?.message || 'Erro Meta']
+          );
+        }
+      } catch (e) {
+        errorCount++;
+        await db.query(
+          `INSERT INTO crm_campaign_logs (campaign_id, contact_id, phone, name, status, error_msg)
+           VALUES ($1, $2, $3, $4, 'error', $5)`,
+          [campaignId, contact.id, phone, contact.name, e.message]
+        );
+      }
+    }
+
+    await db.query(
+      `UPDATE crm_campaigns SET status = 'done', sent_count = $2, error_count = $3, total = $4, sent_at = NOW() WHERE id = $1`,
+      [campaignId, sentCount, errorCount, contacts.length]
+    );
+    res.json({ success: true, sentCount, errorCount, total: contacts.length });
+  } catch (err) {
+    console.error('Erro ao lançar campanha:', err);
+    await db.query("UPDATE crm_campaigns SET status = 'error' WHERE id = $1", [req.params.id]).catch(() => {});
+    res.status(500).json({ error: err.message });
+  }
+});
