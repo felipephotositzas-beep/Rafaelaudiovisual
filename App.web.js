@@ -32,6 +32,7 @@ import Checkout from './src/pages/Checkout';
 import MinhasCompras from './src/pages/MinhasCompras';
 import LocationEvents from './src/pages/LocationEvents';
 import AdminPanel from './src/pages/AdminPanel';
+import BulkMessage from './src/pages/BulkMessage.web';
 import CartModal from './src/components/CartModal';
 import BrandLogo from './src/components/BrandLogo';
 import { RAFAEL_FAVICON } from './src/constants/favicon';
