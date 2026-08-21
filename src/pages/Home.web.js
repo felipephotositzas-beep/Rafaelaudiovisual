@@ -15,6 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import {
   Search,
   Camera,
+  LayoutGrid,
+  List,
   ScanFace,
   Lock,
   DownloadCloud,
@@ -73,6 +75,7 @@ export default function Home() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState('grid');
   const [emailInput, setEmailInput] = useState('');
   const [emailSubscribed, setEmailSubscribed] = useState(false);
 
@@ -421,6 +424,24 @@ export default function Home() {
                 {filteredEvents.length} {filteredEvents.length === 1 ? 'evento encontrado' : 'eventos encontrados'}
                 {searchQuery.trim() ? ` para "${searchQuery}"` : ''}
               </Text>
+              {!isMobile && (
+                <View style={s.viewToggleGroup}>
+                  <TouchableOpacity 
+                    style={[s.viewToggleBtn, viewMode === 'grid' && s.viewToggleBtnActive]} 
+                    onPress={() => setViewMode('grid')}
+                    activeOpacity={0.8}
+                  >
+                    <LayoutGrid size={16} color={viewMode === 'grid' ? primaryColor : '#94A3B8'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[s.viewToggleBtn, viewMode === 'list' && s.viewToggleBtnActive]} 
+                    onPress={() => setViewMode('list')}
+                    activeOpacity={0.8}
+                  >
+                    <List size={16} color={viewMode === 'list' ? primaryColor : '#94A3B8'} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
 
@@ -452,11 +473,11 @@ export default function Home() {
             </View>
           ) : (
             /* Cards Grid */
-            <View style={[s.cardsGrid, isMobile && s.cardsGridMobile]}>
+            <View style={[s.cardsGrid, (isMobile || viewMode === 'list') && s.cardsGridList]}>
               {displayedGalleries.map((gal, idx) => (
-                <View key={gal.id || idx} style={s.cardWrapper}>
+                <View key={gal.id || idx} style={[s.cardWrapper, (!isMobile && viewMode === 'grid') && s.cardWrapperGrid]}>
                   <TouchableOpacity
-                    style={[s.eventCard, isMobile && s.eventCardMobile]}
+                    style={[s.eventCard, (isMobile || viewMode === 'list') && s.eventCardList, isMobile && { height: 120 }]}
                     onPress={() =>
                       navigation.navigate('EventDetails', {
                         id: gal.id,
@@ -466,7 +487,7 @@ export default function Home() {
                     activeOpacity={0.9}
                   >
                     {/* Card Image */}
-                    <View style={[s.cardImageContainer, isMobile && s.cardImageContainerMobile]}>
+                    <View style={[s.cardImageContainer, (isMobile || viewMode === 'list') && s.cardImageContainerList, isMobile && { width: 140 }]}>
                       <Image
                         source={{ uri: gal.image }}
                         style={s.cardImage}
@@ -1049,12 +1070,32 @@ const s = StyleSheet.create({
     padding: 4,
   },
   searchMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 8,
     marginTop: 8,
   },
   searchResultCount: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
+  },
+  viewToggleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    padding: 4,
+    gap: 4,
+  },
+  viewToggleBtn: {
+    padding: 6,
+    borderRadius: 6,
+  },
+  viewToggleBtnActive: {
+    backgroundColor: '#FFFFFF',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
   },
   loadingContainer: {
     alignItems: 'center',
@@ -1101,17 +1142,26 @@ const s = StyleSheet.create({
 
   // Cards Grid
   cardsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 20,
+    justifyContent: 'center',
+  },
+  cardsGridList: {
     flexDirection: 'column',
     gap: 16,
     width: '100%',
     maxWidth: 800,
     alignSelf: 'center',
   },
-  cardsGridMobile: {
-    gap: 12,
-  },
   cardWrapper: {
     width: '100%',
+  },
+  cardWrapperGrid: {
+    minWidth: 260,
+    flexBasis: '22%',
+    flexGrow: 1,
+    marginBottom: 24,
   },
   eventCard: {
     backgroundColor: '#FFFFFF',
@@ -1119,23 +1169,27 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     overflow: 'hidden',
-    flexDirection: 'row',
-    height: 140,
+    flexDirection: 'column',
+    height: 'auto',
     boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)',
     transition: 'all 200ms ease',
   },
-  eventCardMobile: {
-    height: 130,
+  eventCardList: {
+    flexDirection: 'row',
+    height: 140,
   },
   cardImageContainer: {
-    width: 220,
-    height: '100%',
+    width: '100%',
+    aspectRatio: 16 / 10,
+    height: 'auto',
     backgroundColor: '#F1F5F9',
     position: 'relative',
     overflow: 'hidden',
   },
-  cardImageContainerMobile: {
-    width: 160,
+  cardImageContainerList: {
+    width: 220,
+    height: '100%',
+    aspectRatio: 'auto',
   },
   cardImage: {
     width: '100%',
