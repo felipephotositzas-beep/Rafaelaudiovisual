@@ -201,13 +201,25 @@ const formatDateFull = (dateStr) => {
 export default function EventDetails() {
   const navigation = useNavigation();
   const route = useRoute();
-  const eventParam = route.params?.event;
+  // Garante que eventParam seja um objeto real e válido com .name (evita strings quebradas como "[object Object]")
+  const rawEventParam = route.params?.event;
+  const eventParam = (typeof rawEventParam === 'object' && rawEventParam !== null && rawEventParam.name)
+    ? rawEventParam
+    : null;
 
-  // Resolve ID and Slug from params or web URL search params
-  let initialId = eventParam?.id || route.params?.id || route.params?.eventId;
-  let initialSlug = eventParam?.slug || route.params?.slug;
+  // Resolve ID e Slug dos parâmetros ou diretamente da URL da web
+  let initialId = (eventParam ? eventParam.id : null) || route.params?.id || route.params?.eventId;
+  let initialSlug = (eventParam ? eventParam.slug : null) || route.params?.slug;
+
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
+      // 1. Extrai ID ou Slug direto do pathname da URL (/evento/:id ou /event/:id)
+      const pathMatch = window.location.pathname.match(/\/(evento|event)\/([^/?#]+)/i);
+      if (pathMatch && pathMatch[2] && pathMatch[2] !== 'undefined') {
+        initialId = decodeURIComponent(pathMatch[2]);
+      }
+
+      // 2. Extrai de query params (?id=... ou ?event_id=...)
       const searchParams = new URLSearchParams(window.location.search);
       if (!initialId) initialId = searchParams.get('id') || searchParams.get('event_id');
       if (!initialSlug) initialSlug = searchParams.get('slug');
@@ -471,25 +483,33 @@ export default function EventDetails() {
     }
   }, [id, eventData?.slug, eventParam?.slug, initialSlug, adminConfigLoaded, config?.eventsConfig?.onlyOwnerPhotos]);
 
+  // Busca sempre os dados completos do evento pelo ID na API (para links diretos ou dados incompletos)
   useEffect(() => {
-    if (eventParam || !id || id === 'undefined') return;
+    if (!id || id === 'undefined') return;
     let active = true;
     const loadEvent = async () => {
       try {
         const res = await fetchEventById(id);
         if (res.ok) {
           const data = await res.json();
-          if (active) setEventData(data);
+          if (active && data && (data.name || data.id)) {
+            setEventData(data);
+          }
         }
       } catch (e) {
         console.warn('loadEvent error:', e);
       }
     };
-    loadEvent();
+
+    // Executa a busca se não tiver os dados completos (nome ou cidade)
+    if (!eventData || !eventData.name || !eventData.city) {
+      loadEvent();
+    }
+
     return () => {
       active = false;
     };
-  }, [eventParam, id]);
+  }, [id, eventData]);
 
   useEffect(() => {
     if (typeof document === 'undefined' || !id) return undefined;

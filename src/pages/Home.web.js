@@ -550,10 +550,7 @@ export default function Home() {
                   <TouchableOpacity
                     style={[s.eventCard, (isMobile || viewMode === 'list') && s.eventCardList, isMobile && { height: 120 }]}
                     onPress={() =>
-                      navigation.navigate('EventDetails', {
-                        id: gal.id,
-                        event: gal.rawEvent || events.find((e) => e.id === gal.id) || events[0],
-                      })
+                      navigation.navigate('EventDetails', { id: gal.id })
                     }
                     activeOpacity={0.9}
                   >

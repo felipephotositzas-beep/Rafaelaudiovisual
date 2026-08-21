@@ -38,7 +38,7 @@ const EventCard = ({ event }) => {
   const dayStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit' });
 
   const handlePress = () =>
-    navigation.navigate('EventDetails', { id: event.id, event });
+    navigation.navigate('EventDetails', { id: event.id });
 
   return (
     <TouchableOpacity
