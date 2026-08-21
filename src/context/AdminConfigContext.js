@@ -113,7 +113,7 @@ export function AdminConfigProvider({ children }) {
   const [adminPassword, setAdminPassword] = useState('admin123');
   const [isLoaded, setIsLoaded] = useState(false);
 
-const API_URL = 'http://187.127.62.60:3001/api';
+  const API_URL = 'https://rafaelpublicado.com.br/api';
 
   // Carregar dados salvos
   useEffect(() => {
