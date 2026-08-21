@@ -33,6 +33,9 @@ const EventCard = ({ event }) => {
     month: 'short',
     year: 'numeric',
   });
+  
+  const shortMonth = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+  const dayStr = dateObj.toLocaleDateString('pt-BR', { day: '2-digit' });
 
   const handlePress = () =>
     navigation.navigate('EventDetails', { id: event.id, event });
@@ -49,7 +52,7 @@ const EventCard = ({ event }) => {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* ── IMAGE SECTION (Takes 68-72% of card) ── */}
+      {/* ── IMAGE SECTION ── */}
       <View style={[styles.imageContainer, isMobile && styles.imageContainerMobile]}>
         {image ? (
           <Image
@@ -66,26 +69,17 @@ const EventCard = ({ event }) => {
           </View>
         )}
 
-        {/* Soft dark vignette over image bottom */}
-        <View style={styles.imageOverlay} />
-
-        {/* Viewfinder corner brackets */}
-        <View style={styles.viewfinderTL} />
-        <View style={styles.viewfinderBR} />
-
-        {/* Modality Tag */}
-        {modality?.name && (
+        {/* Date Badge like Screenshot */}
+        {event_date && (
           <View style={styles.modalityBadge}>
-            <Text style={styles.modalityText} numberOfLines={1}>
-              {modality.name}
-            </Text>
+            <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14, textAlign: 'center' }}>{dayStr}</Text>
+            <Text style={{ color: '#FFF', fontWeight: '600', fontSize: 10, textAlign: 'center' }}>{shortMonth}</Text>
           </View>
         )}
 
-        {/* Fast selfie AI finder pill */}
+        {/* Fast selfie AI finder pill - Just a circle icon */}
         <View style={styles.aiPill}>
-          <Sparkles size={11} color="var(--primary-color)" />
-          <Text style={styles.aiPillText}>Busca Facial</Text>
+          <Sparkles size={12} color="#0F172A" />
         </View>
       </View>
 
@@ -93,37 +87,27 @@ const EventCard = ({ event }) => {
       <View style={styles.content}>
         <View style={styles.headerBlock}>
           <Text style={styles.title} numberOfLines={2}>
-            {name}
+            {name?.toUpperCase()}
           </Text>
-          {owner?.name && (
-            <Text style={styles.owner} numberOfLines={1}>
-              {owner.name}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.metaRow}>
-          {city && (
-            <View style={styles.metaItem}>
-              <MapPin size={12} color={DarkPalette.textMuted} />
+          <View style={styles.metaRow}>
+            {city && (
               <Text style={styles.metaText} numberOfLines={1}>
                 {city}
               </Text>
-            </View>
-          )}
-          {event_date && (
-            <View style={styles.metaItem}>
-              <CalendarDays size={12} color={DarkPalette.textMuted} />
-              <Text style={styles.metaText}>{formattedDate}</Text>
-            </View>
-          )}
+            )}
+          </View>
         </View>
 
         {/* Button CTA */}
         <View style={styles.footerRow}>
+          <View style={styles.verGaleriaTextLink}>
+            <Camera size={14} color="#64748B" />
+            <Text style={styles.verGaleriaText}>Ver galeria</Text>
+          </View>
+
           <View style={[styles.btnAction, isHovered && styles.btnActionHovered]}>
-            <Text style={styles.btnActionText}>Acessar galeria</Text>
-            <ChevronRight size={14} color="#F7F9FC" />
+            <Text style={styles.btnActionText}>Ver galeria</Text>
+            <ChevronRight size={14} color="#FFFFFF" />
           </View>
         </View>
       </View>
@@ -142,31 +126,34 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     transition: 'all 280ms cubic-bezier(0.2, 0, 0, 1)',
     position: 'relative',
-    height: '100%',
     display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)',
+    flexDirection: 'row', // Horizontal!
+    height: 140, // Fixed height for horizontal card
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)',
+    marginBottom: Spacing.three,
   },
   cardHovered: {
     borderColor: 'var(--primary-color)',
-    transform: 'translateY(-3px)',
-    boxShadow: '0 12px 28px rgba(0, 107, 214, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 24px rgba(0, 107, 214, 0.08), 0 4px 8px rgba(0, 0, 0, 0.04)',
   },
   cardMobile: {
-    marginBottom: Spacing.three,
+    flexDirection: 'column',
+    height: 'auto',
   },
 
-  // Image section (68% of visual volume)
+  // Image section
   imageContainer: {
-    width: '100%',
-    aspectRatio: 16 / 10,
+    width: 220, // Fixed width on desktop
+    height: '100%',
     backgroundColor: '#F1F5F9',
     position: 'relative',
     overflow: 'hidden',
   },
   imageContainerMobile: {
-    aspectRatio: 16 / 10.5,
+    width: '100%',
+    aspectRatio: 16 / 9,
+    height: 'auto',
   },
   image: {
     position: 'absolute',
@@ -187,85 +174,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   imageOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '35%',
-    backgroundColor: 'rgba(15, 23, 42, 0.25)',
-    pointerEvents: 'none',
+    display: 'none',
   },
 
   // Viewfinder accents in corners
-  viewfinderTL: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    width: 8,
-    height: 8,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1.5,
-    borderTopColor: 'var(--primary-color)',
-    borderLeftColor: 'var(--primary-color)',
-    pointerEvents: 'none',
-  },
-  viewfinderBR: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderBottomWidth: 1.5,
-    borderRightWidth: 1.5,
-    borderBottomColor: 'var(--primary-color)',
-    borderRightColor: 'var(--primary-color)',
-    pointerEvents: 'none',
-  },
+  viewfinderTL: { display: 'none' },
+  viewfinderBR: { display: 'none' },
 
   // Badges on image
   modalityBadge: {
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
     borderRadius: Radius.full,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
   },
   modalityText: {
     fontSize: 11,
-    color: '#0F172A',
+    color: '#FFFFFF',
     fontWeight: FontWeights.bold,
-    letterSpacing: 0.3,
   },
   aiPill: {
     position: 'absolute',
     top: 10,
     right: 10,
-    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
-    borderRadius: Radius.full,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+    justifyContent: 'center',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   aiPillText: {
     fontSize: 10,
-    color: 'var(--primary-color)',
+    color: '#0F172A',
     fontWeight: FontWeights.bold,
   },
 
   // Content
   content: {
     padding: Spacing.four,
-    gap: Spacing.three,
     flex: 1,
     justifyContent: 'space-between',
   },
@@ -273,10 +224,10 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    fontSize: 16,
-    fontWeight: FontWeights.bold,
+    fontSize: 15,
+    fontWeight: '800',
     color: '#0F172A',
-    lineHeight: 22,
+    lineHeight: 20,
     letterSpacing: -0.2,
   },
   owner: {
@@ -289,9 +240,8 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
     gap: 12,
-    paddingTop: 2,
+    marginTop: 4,
   },
   metaItem: {
     flexDirection: 'row',
@@ -306,27 +256,38 @@ const styles = StyleSheet.create({
 
   // Footer & Button
   footerRow: {
-    marginTop: Spacing.one,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
   },
   btnAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    paddingVertical: 10,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: Radius.md,
     transition: 'all 200ms ease',
   },
   btnActionHovered: {
-    backgroundColor: BrandColors.primary,
-    borderColor: BrandColors.primary,
+    backgroundColor: '#0F172A',
   },
   btnActionText: {
-    color: 'var(--primary-color)',
-    fontSize: 13,
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: FontWeights.bold,
   },
+  verGaleriaTextLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  verGaleriaText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  }
 });
+

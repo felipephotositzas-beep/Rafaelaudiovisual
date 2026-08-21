@@ -454,7 +454,7 @@ export default function Home() {
             /* Cards Grid */
             <View style={[s.cardsGrid, isMobile && s.cardsGridMobile]}>
               {displayedGalleries.map((gal, idx) => (
-                <View key={gal.id || idx} style={[s.cardWrapper, !isMobile && { minWidth: 260, flexBasis: '22%', flexGrow: 1, marginBottom: 24 }]}>
+                <View key={gal.id || idx} style={s.cardWrapper}>
                   <TouchableOpacity
                     style={[s.eventCard, isMobile && s.eventCardMobile]}
                     onPress={() =>
@@ -1101,39 +1101,41 @@ const s = StyleSheet.create({
 
   // Cards Grid
   cardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-    justifyContent: 'center',
-  },
-  cardsGridMobile: {
     flexDirection: 'column',
     gap: 16,
+    width: '100%',
+    maxWidth: 800,
+    alignSelf: 'center',
+  },
+  cardsGridMobile: {
+    gap: 12,
   },
   cardWrapper: {
-    maxWidth: 320,
+    width: '100%',
   },
   eventCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    overflow: 'hidden',
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+    overflow: 'hidden',
+    flexDirection: 'row',
+    height: 140,
+    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04)',
+    transition: 'all 200ms ease',
   },
   eventCardMobile: {
-    flexDirection: 'row',
-    height: 110,
+    height: 130,
   },
   cardImageContainer: {
-    width: '100%',
-    height: 180,
+    width: 220,
+    height: '100%',
+    backgroundColor: '#F1F5F9',
     position: 'relative',
-    backgroundColor: '#E2E8F0',
+    overflow: 'hidden',
   },
   cardImageContainerMobile: {
-    width: 110,
-    height: '100%',
+    width: 160,
   },
   cardImage: {
     width: '100%',
