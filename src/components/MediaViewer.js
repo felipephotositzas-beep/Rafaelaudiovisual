@@ -158,18 +158,52 @@ export default function MediaViewer({
   const insets = useSafeAreaInsets();
   const [localIndex, setLocalIndex] = useState(currentIndex);
   const [captureShielded, setCaptureShielded] = useState(false);
+  const [lensActive, setLensActive] = useState(false);
+  const [lensPosition, setLensPosition] = useState({ x: 0, y: 0 });
   const translateX = useRef(new Animated.Value(0)).current;
   const { addToCart, removeFromCart, isInCart } = useCart();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const isDesktop = screenWidth >= 768;
   const mediaHeight = Math.max(260, screenHeight - 160);
+  const previewWidth = Math.max(1, screenWidth - 32);
+  const lensRadius = isDesktop ? 130 : 88;
 
   useEffect(() => {
     setLocalIndex(currentIndex);
   }, [currentIndex]);
 
+  useEffect(() => {
+    setLensActive(false);
+    setLensPosition({ x: previewWidth / 2, y: mediaHeight / 2 });
+  }, [localIndex, mediaHeight, previewWidth]);
+
   const currentMedia = photos[localIndex];
+
+  const updateLensPosition = (event) => {
+    if (Platform.OS !== 'web') return;
+
+    const nativeEvent = event?.nativeEvent || {};
+    const touch = nativeEvent.touches?.[0];
+    const clientX = touch?.clientX ?? nativeEvent.clientX;
+    const clientY = touch?.clientY ?? nativeEvent.clientY;
+    const bounds = event?.currentTarget?.getBoundingClientRect?.();
+
+    let x = nativeEvent.locationX ?? nativeEvent.offsetX;
+    let y = nativeEvent.locationY ?? nativeEvent.offsetY;
+
+    if (bounds && Number.isFinite(clientX) && Number.isFinite(clientY)) {
+      x = clientX - bounds.left;
+      y = clientY - bounds.top;
+    }
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+
+    setLensPosition({
+      x: Math.max(0, Math.min(previewWidth, x)),
+      y: Math.max(0, Math.min(mediaHeight, y)),
+    });
+  };
 
   const goTo = (index) => {
     if (index < 0 || index >= photos.length) return;
@@ -363,14 +397,71 @@ export default function MediaViewer({
                 containerHeight={mediaHeight}
               />
             ) : (
-              <Image
-                source={{ uri: currentMedia.watermark_path }}
-                style={[
-                  styles.mediaImage,
-                  { width: screenWidth - 32, height: mediaHeight },
-                ]}
-                resizeMode="contain"
-              />
+              Platform.OS === 'web' ? (
+                <View
+                  style={[
+                    styles.protectedPreviewStage,
+                    { width: previewWidth, height: mediaHeight },
+                  ]}
+                  onMouseEnter={(event) => {
+                    updateLensPosition(event);
+                    setLensActive(true);
+                  }}
+                  onMouseMove={updateLensPosition}
+                  onMouseLeave={() => setLensActive(false)}
+                  onTouchStart={(event) => {
+                    updateLensPosition(event);
+                    setLensActive(true);
+                  }}
+                  onTouchMove={updateLensPosition}
+                  onTouchEnd={() => setLensActive(false)}
+                  onTouchCancel={() => setLensActive(false)}
+                >
+                  <Image
+                    source={{ uri: currentMedia.watermark_path }}
+                    style={styles.blurredPreviewImage}
+                    resizeMode="contain"
+                    draggable={false}
+                  />
+                  {lensActive && (
+                    <>
+                      <Image
+                        source={{ uri: currentMedia.watermark_path }}
+                        style={[
+                          styles.clearPreviewLens,
+                          {
+                            clipPath: `circle(${lensRadius}px at ${lensPosition.x}px ${lensPosition.y}px)`,
+                          },
+                        ]}
+                        resizeMode="contain"
+                        draggable={false}
+                      />
+                      <View
+                        pointerEvents="none"
+                        style={[
+                          styles.previewLensRing,
+                          {
+                            width: lensRadius * 2,
+                            height: lensRadius * 2,
+                            borderRadius: lensRadius,
+                            left: lensPosition.x - lensRadius,
+                            top: lensPosition.y - lensRadius,
+                          },
+                        ]}
+                      />
+                    </>
+                  )}
+                </View>
+              ) : (
+                <Image
+                  source={{ uri: currentMedia.watermark_path }}
+                  style={[
+                    styles.mediaImage,
+                    { width: previewWidth, height: mediaHeight },
+                  ]}
+                  resizeMode="contain"
+                />
+              )
             )}
           </Animated.View>
         )}
@@ -571,6 +662,29 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   mediaImage: {},
+  protectedPreviewStage: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  blurredPreviewImage: {
+    width: '100%',
+    height: '100%',
+    filter: 'blur(14px)',
+    transform: [{ scale: 1.035 }],
+  },
+  clearPreviewLens: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'none',
+  },
+  previewLensRing: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'transparent',
+    boxShadow: '0 0 0 9999px rgba(7, 11, 20, 0.12)',
+  },
   captureShield: {
     gap: 10,
     paddingHorizontal: 28,
