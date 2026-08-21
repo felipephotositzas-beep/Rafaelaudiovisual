@@ -72,6 +72,7 @@ export default function AdminPanel() {
   } = useAdminConfig();
 
   // Login State
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
 
@@ -176,16 +177,17 @@ export default function AdminPanel() {
 
   // ─── LOGIN HANDLER ────────────────────────────────────────────────────────
   const handleLogin = () => {
-    if (!passwordInput.trim()) {
-      setLoginError('Digite a senha de administrador.');
+    if (!emailInput.trim() || !passwordInput.trim()) {
+      setLoginError('Digite o e-mail e a senha.');
       return;
     }
-    const ok = loginAdmin(passwordInput.trim());
+    const ok = loginAdmin(emailInput.trim(), passwordInput.trim());
     if (!ok) {
-      setLoginError('Senha incorreta.');
+      setLoginError('Credenciais incorretas.');
     } else {
       setLoginError('');
       setPasswordInput('');
+      setEmailInput('');
     }
   };
 
@@ -307,13 +309,9 @@ export default function AdminPanel() {
         <View style={styles.loginCard}>
           <View style={styles.loginHeader}>
             <BrandLogo size="medium" />
-            <View style={styles.adminBadge}>
-              <ShieldCheck size={14} color="var(--primary-color)" />
-              <Text style={styles.adminBadgeText}>PAINEL ADMINISTRATIVO</Text>
-            </View>
-            <Text style={styles.loginTitle}>Acesso Restrito</Text>
+            <Text style={styles.loginTitle}>Entrar</Text>
             <Text style={styles.loginSubtitle}>
-              Personalize fotógrafos, banners, cores e todo o conteúdo da sua loja.
+              Faça login para acessar o sistema.
             </Text>
           </View>
 
@@ -325,10 +323,27 @@ export default function AdminPanel() {
           ) : null}
 
           <View style={styles.formGroup}>
-            <Text style={styles.label}>Senha de Administrador</Text>
+            <Text style={styles.label}>E-mail</Text>
             <TextInput
               style={styles.input}
-              placeholder="Digite sua senha..."
+              placeholder="Digite seu e-mail"
+              placeholderTextColor="#94A3B8"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={emailInput}
+              onChangeText={(v) => {
+                setEmailInput(v);
+                setLoginError('');
+              }}
+              onSubmitEditing={handleLogin}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Senha</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Digite sua senha"
               placeholderTextColor="#94A3B8"
               secureTextEntry
               value={passwordInput}
@@ -346,7 +361,7 @@ export default function AdminPanel() {
             activeOpacity={0.88}
           >
             <Lock size={16} color="#FFFFFF" />
-            <Text style={styles.btnPrimaryText}>Entrar no Painel</Text>
+            <Text style={styles.btnPrimaryText}>Entrar</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

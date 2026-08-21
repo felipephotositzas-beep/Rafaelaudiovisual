@@ -319,8 +319,11 @@ export function AdminConfigProvider({ children }) {
   };
 
   // Autenticação Admin
-  const loginAdmin = (enteredPassword) => {
-    if (enteredPassword === adminPassword || enteredPassword === 'admin' || enteredPassword === 'admin123' || enteredPassword === 'topfotos123') {
+  const loginAdmin = (email, enteredPassword) => {
+    const validEmail = 'contatorafaelscosta@gmail.com';
+    const validPassword = '9129Mudar@';
+
+    if (email.trim().toLowerCase() === validEmail && enteredPassword === validPassword) {
       setIsAuthenticated(true);
       return true;
     }
