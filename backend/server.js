@@ -1091,3 +1091,93 @@ app.post('/api/crm/campaigns/:id/launch', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── CRM: STATS / DASHBOARD ──────────────────────────────────────────────────
+app.get('/api/crm/stats', async (req, res) => {
+  try {
+    const [contacts, lists, campaigns, logsMonth, logsByCategory, logsByDay] = await Promise.all([
+      db.query('SELECT COUNT(*)::int AS total FROM crm_contacts'),
+      db.query('SELECT COUNT(*)::int AS total FROM crm_lists'),
+      db.query(`
+        SELECT
+          COUNT(*)::int AS total,
+          SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END)::int AS done,
+          SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END)::int AS draft,
+          SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END)::int AS running
+        FROM crm_campaigns
+      `),
+      db.query(`
+        SELECT COUNT(*)::int AS total,
+          SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END)::int AS sent,
+          SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END)::int AS errors
+        FROM crm_campaign_logs
+        WHERE EXTRACT(MONTH FROM sent_at) = EXTRACT(MONTH FROM NOW())
+          AND EXTRACT(YEAR FROM sent_at) = EXTRACT(YEAR FROM NOW())
+      `),
+      db.query(`
+        SELECT mt.category, COUNT(cl.id)::int AS msg_count
+        FROM crm_campaign_logs cl
+        JOIN crm_campaigns cc ON cc.id = cl.campaign_id
+        LEFT JOIN meta_templates mt ON mt.name = cc.template_name
+        WHERE EXTRACT(MONTH FROM cl.sent_at) = EXTRACT(MONTH FROM NOW())
+          AND EXTRACT(YEAR FROM cl.sent_at) = EXTRACT(YEAR FROM NOW())
+          AND cl.status = 'sent'
+        GROUP BY mt.category
+      `),
+      db.query(`
+        SELECT DATE(sent_at) AS day, COUNT(*)::int AS count
+        FROM crm_campaign_logs
+        WHERE sent_at >= NOW() - INTERVAL '30 days' AND status = 'sent'
+        GROUP BY DATE(sent_at) ORDER BY day ASC
+      `),
+    ]);
+
+    // Pricing per conversation (USD) - Brazil 2025
+    const PRICING = { MARKETING: 0.0788, UTILITY: 0.0180, AUTHENTICATION: 0.0315, SERVICE: 0, null: 0.0788 };
+    let totalCostUsd = 0;
+    const costBreakdown = [];
+    for (const row of logsByCategory.rows) {
+      const rate = PRICING[row.category] ?? PRICING['MARKETING'];
+      const cost = (row.msg_count || 0) * rate;
+      totalCostUsd += cost;
+      costBreakdown.push({ category: row.category || 'MARKETING', msg_count: row.msg_count, rate, cost_usd: cost });
+    }
+
+    // Recent campaigns
+    const recentCamps = await db.query(`
+      SELECT c.*, l.name AS list_name,
+        (SELECT COUNT(*)::int FROM crm_campaign_logs WHERE campaign_id = c.id AND status = 'sent') AS sent_logs,
+        (SELECT COUNT(*)::int FROM crm_campaign_logs WHERE campaign_id = c.id AND status = 'error') AS error_logs,
+        mt.category AS template_category
+      FROM crm_campaigns c
+      LEFT JOIN crm_lists l ON l.id = c.list_id
+      LEFT JOIN meta_templates mt ON mt.name = c.template_name
+      ORDER BY c.created_at DESC LIMIT 10
+    `);
+
+    // Cost per recent campaign
+    const campaignCosts = recentCamps.rows.map(c => {
+      const rate = PRICING[c.template_category] ?? PRICING['MARKETING'];
+      const cost_usd = (c.sent_logs || 0) * rate;
+      return { ...c, cost_usd, rate };
+    });
+
+    res.json({
+      contacts: contacts.rows[0]?.total || 0,
+      lists: lists.rows[0]?.total || 0,
+      campaigns: campaigns.rows[0] || { total:0, done:0, draft:0, running:0 },
+      month: {
+        total: logsMonth.rows[0]?.total || 0,
+        sent: logsMonth.rows[0]?.sent || 0,
+        errors: logsMonth.rows[0]?.errors || 0,
+        cost_usd: totalCostUsd,
+        breakdown: costBreakdown,
+      },
+      daily: logsByDay.rows,
+      recentCampaigns: campaignCosts,
+    });
+  } catch (err) {
+    console.error('Stats error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
