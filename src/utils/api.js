@@ -130,12 +130,19 @@ export const fetchPhotographersForEvent = async (eventId, registeredPhotographer
           (p.photographer && typeof p.photographer === 'object' ? p.photographer.name : null) ||
           'Fotógrafo Participante';
 
+        const photogAvatar =
+          p.photographer_image ||
+          p.photographer_avatar ||
+          p.avatar ||
+          (p.photographer && typeof p.photographer === 'object' ? p.photographer.image || p.photographer.avatar : null) ||
+          'https://ik.imagekit.io/yg7h35ptj/public/assets/company/banner-default.jpg';
+
         if (!photogMap.has(photogId)) {
           photogMap.set(photogId, {
             id: photogId,
             name: photogName,
             slug: photogId,
-            avatar: p.photographer_avatar || 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg',
+            avatar: photogAvatar,
             isPrimary: photogId === DEFAULT_PHOTOGRAPHER_ID,
             isRegistered: false,
             detectedInEvent: true,
@@ -144,6 +151,9 @@ export const fetchPhotographersForEvent = async (eventId, registeredPhotographer
           const existing = photogMap.get(photogId);
           if (photogName && photogName !== 'Fotógrafo' && photogName !== 'Fotógrafo Participante') {
             existing.name = photogName;
+          }
+          if (photogAvatar && (!existing.avatar || existing.avatar.includes('temp_nt2ARuj'))) {
+            existing.avatar = photogAvatar;
           }
         }
       }
@@ -175,12 +185,19 @@ export const fetchPhotographersForEvent = async (eventId, registeredPhotographer
               (p.photographer && typeof p.photographer === 'object' ? p.photographer.name : null) ||
               'Fotógrafo Participante';
 
+            const photogAvatar =
+              p.photographer_image ||
+              p.photographer_avatar ||
+              p.avatar ||
+              (p.photographer && typeof p.photographer === 'object' ? p.photographer.image || p.photographer.avatar : null) ||
+              'https://ik.imagekit.io/yg7h35ptj/public/assets/company/banner-default.jpg';
+
             if (!photogMap.has(photogId)) {
               photogMap.set(photogId, {
                 id: photogId,
                 name: photogName,
                 slug: photogId,
-                avatar: p.photographer_avatar || 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg',
+                avatar: photogAvatar,
                 isPrimary: photogId === DEFAULT_PHOTOGRAPHER_ID,
                 isRegistered: false,
                 detectedInEvent: true,
@@ -189,6 +206,9 @@ export const fetchPhotographersForEvent = async (eventId, registeredPhotographer
               const existing = photogMap.get(photogId);
               if (photogName && photogName !== 'Fotógrafo' && photogName !== 'Fotógrafo Participante') {
                 existing.name = photogName;
+              }
+              if (photogAvatar && (!existing.avatar || existing.avatar.includes('temp_nt2ARuj'))) {
+                existing.avatar = photogAvatar;
               }
             }
           }

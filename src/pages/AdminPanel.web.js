@@ -556,7 +556,11 @@ export default function AdminPanel() {
                         </View>
 
                         {/* Avatar e Nome */}
-                        <Image source={{ uri: p.avatar }} style={styles.photogAvatarSmall} />
+                        <Image
+                          source={{ uri: p.avatar || 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg' }}
+                          style={styles.photogAvatarSmall}
+                          resizeMode="cover"
+                        />
 
                         <View style={{ flex: 1, gap: 2 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
