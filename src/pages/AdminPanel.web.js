@@ -510,13 +510,23 @@ export default function AdminPanel() {
                       "{selectedEventObj.name}"
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.btnOpenGalleryPreview}
-                    onPress={() => navigation.navigate('EventDetails', { id: selectedEventObj.id, event: selectedEventObj })}
-                  >
-                    <ExternalLink size={13} color="#006BD6" />
-                    <Text style={styles.btnOpenGalleryPreviewText}>Ver Galeria</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={styles.btnOpenGalleryPreview}
+                      onPress={() => loadPhotographersForSelectedEvent(selectedEventObj.id)}
+                      activeOpacity={0.8}
+                    >
+                      <RefreshCw size={13} color="#006BD6" />
+                      <Text style={styles.btnOpenGalleryPreviewText}>Re-Escanear</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.btnOpenGalleryPreview}
+                      onPress={() => navigation.navigate('EventDetails', { id: selectedEventObj.id, event: selectedEventObj })}
+                    >
+                      <ExternalLink size={13} color="#006BD6" />
+                      <Text style={styles.btnOpenGalleryPreviewText}>Ver Galeria</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {loadingEventDetails ? (

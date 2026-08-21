@@ -91,7 +91,8 @@ export const resolvePhotographerProfile = async (urlOrSlug) => {
 
 /**
  * Busca e identifica TODOS os fotógrafos que têm fotos em um determinado evento,
- * examinando as fotos da API da Top Fotos e cruzando com os fotógrafos cadastrados.
+ * examinando amostras distribuídas de fotos por toda a galeria da Top Fotos e
+ * cruzando com os fotógrafos cadastrados.
  */
 export const fetchPhotographersForEvent = async (eventId, registeredPhotographers = []) => {
   if (!eventId || eventId === 'undefined') return registeredPhotographers;
@@ -112,23 +113,17 @@ export const fetchPhotographersForEvent = async (eventId, registeredPhotographer
     }
   }
 
-  // 2. Busca amostra de fotos do evento sem filtro de fotógrafo para detectar fotógrafos presentes
+  // 2. Busca página 1 para obter o número total de páginas (num_pages)
   try {
-    const pagesToScan = [1, 2, 3];
-    const fetchPromises = pagesToScan.map((page) =>
-      fetchPhotos(eventId, page, 'photo')
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null)
-    );
+    const resP1 = await fetchPhotos(eventId, 1, 'photo');
+    if (resP1.ok) {
+      const dataP1 = await resP1.json();
+      const numPages = dataP1.num_pages || 1;
 
-    const results = await Promise.all(fetchPromises);
-
-    for (const data of results) {
-      if (!data || !data.results) continue;
-      for (const p of data.results) {
+      // Processa fotos da página 1
+      for (const p of (dataP1.results || [])) {
         const photogId = p.photographer || p.photographer_id || p.owner;
         if (!photogId) continue;
-
         const photogName =
           p.photographer_name ||
           p.owner_name ||
@@ -136,27 +131,72 @@ export const fetchPhotographersForEvent = async (eventId, registeredPhotographer
           'Fotógrafo Participante';
 
         if (!photogMap.has(photogId)) {
-          // Novo fotógrafo detectado diretamente nas fotos do evento!
           photogMap.set(photogId, {
             id: photogId,
             name: photogName,
             slug: photogId,
-            avatar: 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg',
+            avatar: p.photographer_avatar || 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg',
             isPrimary: photogId === DEFAULT_PHOTOGRAPHER_ID,
             isRegistered: false,
             detectedInEvent: true,
           });
         } else {
-          // Atualiza nome mais legível se disponível
           const existing = photogMap.get(photogId);
           if (photogName && photogName !== 'Fotógrafo' && photogName !== 'Fotógrafo Participante') {
             existing.name = photogName;
           }
         }
       }
+
+      // Se houver mais páginas, faz amostragem distribuída em paralelo (até 35 pontos da galeria)
+      if (numPages > 1) {
+        const samplePages = new Set([2, 3, 4, 5, numPages]);
+        const step = Math.max(1, Math.floor(numPages / 35));
+        for (let p = 1; p <= numPages; p += step) {
+          samplePages.add(p);
+        }
+
+        const pagesArr = Array.from(samplePages).filter((p) => p !== 1).slice(0, 35);
+        const fetchPromises = pagesArr.map((page) =>
+          fetchPhotos(eventId, page, 'photo')
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null)
+        );
+
+        const samplesResults = await Promise.all(fetchPromises);
+        for (const data of samplesResults) {
+          if (!data || !data.results) continue;
+          for (const p of data.results) {
+            const photogId = p.photographer || p.photographer_id || p.owner;
+            if (!photogId) continue;
+            const photogName =
+              p.photographer_name ||
+              p.owner_name ||
+              (p.photographer && typeof p.photographer === 'object' ? p.photographer.name : null) ||
+              'Fotógrafo Participante';
+
+            if (!photogMap.has(photogId)) {
+              photogMap.set(photogId, {
+                id: photogId,
+                name: photogName,
+                slug: photogId,
+                avatar: p.photographer_avatar || 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg',
+                isPrimary: photogId === DEFAULT_PHOTOGRAPHER_ID,
+                isRegistered: false,
+                detectedInEvent: true,
+              });
+            } else {
+              const existing = photogMap.get(photogId);
+              if (photogName && photogName !== 'Fotógrafo' && photogName !== 'Fotógrafo Participante') {
+                existing.name = photogName;
+              }
+            }
+          }
+        }
+      }
     }
   } catch (err) {
-    console.warn('Erro ao escanear fotógrafos do evento:', err);
+    console.warn('Erro ao escanear fotógrafos distribuídos do evento:', err);
   }
 
   return Array.from(photogMap.values());
