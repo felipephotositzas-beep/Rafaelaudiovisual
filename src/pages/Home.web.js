@@ -193,7 +193,7 @@ export default function Home() {
       {config.banners?.enableHeroPromoBanner && config.banners?.promoBanners?.map((banner, i) => (
         <View key={banner.id || i} style={[s.promoBannerWrapper, { marginTop: i === 0 ? 0 : -10 }]}>
           <TouchableOpacity
-            style={[s.promoBannerCard, { backgroundColor: primaryDeep, backgroundImage: banner.imageUrl ? `url(${banner.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }]}
+            style={[s.promoBannerCard, { backgroundColor: primaryDeep, overflow: 'hidden' }]}
             onPress={() => {
               if (banner.link) {
                  if (banner.link.startsWith('http')) {
@@ -208,7 +208,12 @@ export default function Home() {
             }}
             activeOpacity={0.9}
           >
-            {banner.imageUrl && <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14 }} />}
+            {banner.imageUrl ? (
+              <>
+                <Image source={{ uri: banner.imageUrl }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 14 }} resizeMode="cover" />
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14 }} />
+              </>
+            ) : null}
             <View style={s.promoBannerContent}>
               <View style={s.promoBannerLeft}>
                 <View style={s.promoSparkleBadge}>
