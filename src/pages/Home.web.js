@@ -38,6 +38,7 @@ import { mockEventsData } from '../data/mockEvents';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Radius, Spacing, Layout } from '../constants/theme';
 import { useAdminConfig } from '../context/AdminConfigContext';
+import { trackPageView, trackSearch } from '../utils/analytics';
 
 // Inline Vector Icons for Social Media
 function InstagramIcon({ size = 18, color = '#475569' }) {
@@ -79,7 +80,61 @@ export default function Home() {
   const [emailInput, setEmailInput] = useState('');
   const [emailSubscribed, setEmailSubscribed] = useState(false);
 
-  const activePhotographers = (config.photographers || []).filter((p) => p.active !== false);
+  // Analytics & SEO: Rastreia pageview na Home e injeta Schema.org
+  useEffect(() => {
+    trackPageView('home');
+
+    if (typeof document !== 'undefined') {
+      document.title = config.branding?.siteTitle || 'Rafael Publicado | Cobertura Audiovisual de Eventos';
+      
+      let script = document.getElementById('schema-org-site');
+      if (!script) {
+        script = document.createElement('script');
+        script.id = 'schema-org-site';
+        script.type = 'application/ld+json';
+        document.head.appendChild(script);
+      }
+      script.text = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'WebSite',
+            '@id': 'https://rafaelpublicado.com.br/#website',
+            'url': 'https://rafaelpublicado.com.br/',
+            'name': config.branding?.siteName || 'Rafael Publicado Audiovisual',
+            'description': config.branding?.subtitleHero || 'Fotos profissionais dos melhores eventos esportivos e momentos especiais.',
+            'potentialAction': {
+              '@type': 'SearchAction',
+              'target': 'https://rafaelpublicado.com.br/?q={search_term_string}',
+              'query-input': 'required name=search_term_string'
+            }
+          },
+          {
+            '@type': 'Organization',
+            '@id': 'https://rafaelpublicado.com.br/#organization',
+            'name': 'Rafael Publicado Audiovisual',
+            'url': 'https://rafaelpublicado.com.br/',
+            'logo': 'https://rafaelpublicado.com.br/assets/logo.png',
+            'sameAs': [
+              'https://instagram.com/rafaelpublicado',
+              'https://topfotos.com.br/perfil/rafael-costa'
+            ]
+          }
+        ]
+      });
+    }
+  }, [config.branding]);
+
+  // Rastreia buscas efetuadas
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) return;
+    const timer = setTimeout(() => {
+      trackSearch(searchQuery);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+    const activePhotographers = (config.photographers || []).filter((p) => p.active !== false);
 
   useEffect(() => {
     loadEventsData();

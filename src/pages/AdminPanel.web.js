@@ -13,6 +13,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
+  BarChart2,
+  TrendingUp,
+  Activity,
+  Globe,
+  ScanFace,
   ShieldCheck,
   Users,
   Image as ImageIcon,
@@ -43,6 +48,7 @@ import {
   Search,
 } from 'lucide-react-native';
 import { useAdminConfig } from '../context/AdminConfigContext';
+import { fetchAnalyticsSummary } from '../utils/analytics';
 import {
   resolvePhotographerProfile,
   fetchAllEvents,
@@ -77,7 +83,30 @@ export default function AdminPanel() {
   const [loginError, setLoginError] = useState('');
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState('eventSettings'); // 'eventSettings' | 'photographers' | 'banners' | 'branding' | 'theme' | 'events' | 'advanced'
+  const [activeTab, setActiveTab] = useState('analytics'); // Padrão abre na aba de Métricas
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [analyticsSubTab, setAnalyticsSubTab] = useState('events'); // 'events' | 'searches' | 'activity' | 'seo'
+  const [analyticsFilterQuery, setAnalyticsFilterQuery] = useState('');
+
+  const loadAnalytics = async () => {
+    setLoadingAnalytics(true);
+    try {
+      const data = await fetchAnalyticsSummary();
+      if (data) setAnalyticsData(data);
+    } catch (err) {
+      console.warn('Erro ao carregar métricas:', err);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAnalytics();
+    }
+  }, [isAuthenticated, activeTab]);
+ // 'eventSettings' | 'photographers' | 'banners' | 'branding' | 'theme' | 'events' | 'advanced'
 
   // Tab: Photographers
   const [newPhotographerInput, setNewPhotographerInput] = useState('');
@@ -458,6 +487,7 @@ export default function AdminPanel() {
           contentContainerStyle={styles.tabsBarInner}
         >
           {[
+            { key: 'analytics', label: 'Métricas & Google', icon: BarChart2 },
             { key: 'eventSettings', label: 'Fotos por Evento', icon: Sliders },
             { key: 'photographers', label: 'Multi-Fotógrafos', icon: Users },
             { key: 'banners', label: 'Banners & Hero', icon: ImageIcon },
@@ -491,6 +521,381 @@ export default function AdminPanel() {
 
       {/* ── CONTEÚDO DA ABA ATIVA ── */}
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            NOVA ABA: MÉTRICAS, ACESSOS & INDEXAÇÃO NO GOOGLE
+        ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'analytics' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderBetween}>
+              <View>
+                <Text style={styles.sectionTitle}>Métricas de Acessos & Google</Text>
+                <Text style={styles.sectionDesc}>
+                  Acompanhe em tempo real as visitas ao site, quantos acessaram cada evento, quem buscou eventos e quantas pessoas usaram o reconhecimento facial.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.btnActionSecondary, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                onPress={loadAnalytics}
+                disabled={loadingAnalytics}
+              >
+                <RefreshCw size={14} color="var(--primary-color)" />
+                <Text style={styles.btnActionSecondaryText}>{loadingAnalytics ? 'Atualizando...' : 'Atualizar Dados'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── 5 CARDS DE ESTATÍSTICAS PRINCIPAIS ── */}
+            <View style={styles.statsGrid}>
+              {/* Total Pageviews */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <Globe size={20} color="#006BD6" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statLabel}>Acessos ao Site</Text>
+                  <Text style={styles.statValue}>
+                    {analyticsData?.totals?.pageViews || 0}
+                  </Text>
+                  <Text style={styles.statSub}>Total de visualizações gerais</Text>
+                </View>
+              </View>
+
+              {/* Visitantes Únicos */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
+                  <Users size={20} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statLabel}>Visitantes Únicos</Text>
+                  <Text style={styles.statValue}>
+                    {analyticsData?.totals?.uniqueVisitors || 0}
+                  </Text>
+                  <Text style={styles.statSub}>Pessoas distintas que entraram</Text>
+                </View>
+              </View>
+
+              {/* Acessos a Galerias de Eventos */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#FAF5FF' }]}>
+                  <ImageIcon size={20} color="#9333EA" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statLabel}>Acessos a Eventos</Text>
+                  <Text style={styles.statValue}>
+                    {analyticsData?.totals?.eventViews || 0}
+                  </Text>
+                  <Text style={styles.statSub}>Visitas às páginas de fotos</Text>
+                </View>
+              </View>
+
+              {/* Reconhecimento Facial */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
+                  <ScanFace size={20} color="#EA580C" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statLabel}>Reconhecimento Facial</Text>
+                  <Text style={styles.statValue}>
+                    {analyticsData?.totals?.faceSearches || 0}
+                  </Text>
+                  <Text style={styles.statSub}>Selfies pesquisadas por clientes</Text>
+                </View>
+              </View>
+
+              {/* Buscas no Site */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#FDF2F8' }]}>
+                  <Search size={20} color="#DB2777" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statLabel}>Buscas Realizadas</Text>
+                  <Text style={styles.statValue}>
+                    {analyticsData?.totals?.searches || 0}
+                  </Text>
+                  <Text style={styles.statSub}>Pesquisas de eventos/cidades</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── SUB-ABAS DE DETALHES ── */}
+            <View style={styles.cardBox}>
+              <View style={styles.subTabsHeader}>
+                {[
+                  { key: 'events', label: 'Acessos por Evento', icon: Calendar },
+                  { key: 'searches', label: 'Quem Procurou (Termos)', icon: Search },
+                  { key: 'activity', label: 'Atividade Recente', icon: Activity },
+                  { key: 'seo', label: 'Indexação no Google & SEO', icon: Globe },
+                ].map((st) => {
+                  const StIcon = st.icon;
+                  const isStActive = analyticsSubTab === st.key;
+                  return (
+                    <TouchableOpacity
+                      key={st.key}
+                      style={[styles.subTabBtn, isStActive && styles.subTabBtnActive]}
+                      onPress={() => setAnalyticsSubTab(st.key)}
+                      activeOpacity={0.8}
+                    >
+                      <StIcon size={15} color={isStActive ? 'var(--primary-color)' : '#64748B'} />
+                      <Text style={[styles.subTabBtnText, isStActive && styles.subTabBtnTextActive]}>
+                        {st.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* 1. SUB-ABA: EVENTOS */}
+              {analyticsSubTab === 'events' && (
+                <View style={{ paddingTop: 16 }}>
+                  <View style={styles.cardBoxHeaderBetween}>
+                    <Text style={[styles.cardBoxTitle, { marginBottom: 0 }]}>
+                      Desempenho Individual por Evento
+                    </Text>
+                    <TextInput
+                      style={[styles.input, { maxWidth: 260, paddingVertical: 6 }]}
+                      placeholder="Filtrar evento por nome ou ID..."
+                      placeholderTextColor="#94A3B8"
+                      value={analyticsFilterQuery}
+                      onChangeText={setAnalyticsFilterQuery}
+                    />
+                  </View>
+
+                  {loadingAnalytics ? (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="var(--primary-color)" />
+                      <Text style={{ fontSize: 13, color: '#64748B', marginTop: 8 }}>Carregando dados dos eventos...</Text>
+                    </View>
+                  ) : !analyticsData?.eventsMetrics || analyticsData.eventsMetrics.length === 0 ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <Text style={{ color: '#64748B', fontSize: 14 }}>
+                        Ainda não há acessos registrados nos eventos. Assim que clientes abrirem as galerias, os números aparecerão aqui em tempo real.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ marginTop: 12 }}>
+                      {analyticsData.eventsMetrics
+                        .filter((em) => {
+                          if (!analyticsFilterQuery.trim()) return true;
+                          const q = analyticsFilterQuery.toLowerCase();
+                          return (em.eventName || '').toLowerCase().includes(q) || (em.eventId || '').toLowerCase().includes(q);
+                        })
+                        .map((em, idx) => (
+                          <View key={em.eventId || idx} style={styles.analyticsEventRow}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.analyticsEventName} numberOfLines={1}>
+                                {em.eventName}
+                              </Text>
+                              <Text style={styles.analyticsEventSub}>
+                                ID: {em.eventId} {em.lastAccessed ? '• Último acesso: ' + new Date(em.lastAccessed).toLocaleString('pt-BR') : ''}
+                              </Text>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                              <View style={styles.metricBadge}>
+                                <Eye size={13} color="#006BD6" />
+                                <Text style={styles.metricBadgeText}>
+                                  <Text style={{ fontWeight: '800' }}>{em.viewsCount}</Text> acessos
+                                </Text>
+                              </View>
+
+                              <View style={[styles.metricBadge, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}>
+                                <ScanFace size={13} color="#EA580C" />
+                                <Text style={[styles.metricBadgeText, { color: '#C2410C' }]}>
+                                  <Text style={{ fontWeight: '800' }}>{em.faceSearchesCount}</Text> selfies/facial
+                                </Text>
+                              </View>
+
+                              <TouchableOpacity
+                                style={styles.btnOpenEventFromAnalytics}
+                                onPress={() => navigation.navigate('EventDetails', { id: em.eventId })}
+                                activeOpacity={0.8}
+                              >
+                                <ExternalLink size={12} color="var(--primary-color)" />
+                                <Text style={styles.btnOpenEventFromAnalyticsText}>Ver Galeria</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* 2. SUB-ABA: QUEM PROCUROU */}
+              {analyticsSubTab === 'searches' && (
+                <View style={{ paddingTop: 16 }}>
+                  <Text style={styles.cardBoxTitle}>Termos & Eventos Mais Procurados no Site</Text>
+                  <Text style={[styles.fieldHint, { marginBottom: 16 }]}>
+                    Veja o que os visitantes estão digitando no campo de busca para encontrar suas fotos e eventos.
+                  </Text>
+
+                  {!analyticsData?.recentSearches || analyticsData.recentSearches.length === 0 ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <Text style={{ color: '#64748B', fontSize: 14 }}>Nenhuma busca registrada ainda.</Text>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                      {analyticsData.recentSearches.map((s, idx) => (
+                        <View key={idx} style={styles.searchPill}>
+                          <Search size={13} color="#006BD6" />
+                          <Text style={styles.searchPillText}>{s.query}</Text>
+                          <View style={styles.searchPillCount}>
+                            <Text style={styles.searchPillCountText}>{s.count}x</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* 3. SUB-ABA: ATIVIDADE RECENTE */}
+              {analyticsSubTab === 'activity' && (
+                <View style={{ paddingTop: 16 }}>
+                  <Text style={styles.cardBoxTitle}>Histórico de Ações Recentes</Text>
+                  <Text style={[styles.fieldHint, { marginBottom: 16 }]}>
+                    Log das últimas 50 ações realizadas no site (visitas, buscas e pesquisas de rosto).
+                  </Text>
+
+                  {!analyticsData?.recentActivity || analyticsData.recentActivity.length === 0 ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <Text style={{ color: '#64748B', fontSize: 14 }}>Nenhuma atividade registrada recentemente.</Text>
+                    </View>
+                  ) : (
+                    <View style={{ gap: 8 }}>
+                      {analyticsData.recentActivity.map((act) => {
+                        let typeLabel = 'Acesso à Página';
+                        let typeColor = '#006BD6';
+                        let typeBg = '#EFF6FF';
+                        let IconElem = Globe;
+
+                        if (act.event_type === 'event_view') {
+                          typeLabel = 'Acesso a Evento';
+                          typeColor = '#9333EA';
+                          typeBg = '#FAF5FF';
+                          IconElem = ImageIcon;
+                        } else if (act.event_type === 'face_search') {
+                          typeLabel = 'Reconhecimento Facial';
+                          typeColor = '#EA580C';
+                          typeBg = '#FFF7ED';
+                          IconElem = ScanFace;
+                        } else if (act.event_type === 'search') {
+                          typeLabel = 'Busca por Texto';
+                          typeColor = '#DB2777';
+                          typeBg = '#FDF2F8';
+                          IconElem = Search;
+                        }
+
+                        return (
+                          <View key={act.id} style={styles.activityRow}>
+                            <View style={[styles.activityTypeBadge, { backgroundColor: typeBg }]}>
+                              <IconElem size={14} color={typeColor} />
+                              <Text style={[styles.activityTypeText, { color: typeColor }]}>{typeLabel}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.activityTitle} numberOfLines={1}>
+                                {act.event_name || act.search_query || 'Página Inicial'}
+                              </Text>
+                              <Text style={styles.activitySub}>
+                                IP: {act.user_ip || 'Anônimo'} • {new Date(act.created_at).toLocaleString('pt-BR')}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* 4. SUB-ABA: SEO & GOOGLE */}
+              {analyticsSubTab === 'seo' && (
+                <View style={{ paddingTop: 16 }}>
+                  <Text style={styles.cardBoxTitle}>Indexação no Google & Ferramentas de Busca</Text>
+                  <Text style={[styles.fieldHint, { marginBottom: 20 }]}>
+                    Seu site e todos os seus eventos estão configurados com metadados estruturados (Schema.org, OpenGraph, Sitemap Dinâmico e Robots.txt) para que o Google encontre e posicione suas fotos automaticamente.
+                  </Text>
+
+                  <View style={{ gap: 12, marginBottom: 24 }}>
+                    <View style={styles.seoStatusBox}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <CheckCircle2 size={20} color="#16A34A" />
+                        <View>
+                          <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 14 }}>
+                            Sitemap XML Dinâmico (Todos os Eventos Ativos)
+                          </Text>
+                          <Text style={{ fontSize: 12, color: '#64748B' }}>
+                            https://rafaelpublicado.com.br/sitemap.xml
+                          </Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.btnOpenLink}
+                        onPress={() => {
+                          if (typeof window !== 'undefined') window.open('https://rafaelpublicado.com.br/sitemap.xml', '_blank');
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <ExternalLink size={13} color="var(--primary-color)" />
+                        <Text style={styles.btnOpenLinkText}>Testar Sitemap</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.seoStatusBox}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <CheckCircle2 size={20} color="#16A34A" />
+                        <View>
+                          <Text style={{ fontWeight: '700', color: '#0F172A', fontSize: 14 }}>
+                            Robots.txt Otimizado para Indexação do Google
+                          </Text>
+                          <Text style={{ fontSize: 12, color: '#64748B' }}>
+                            https://rafaelpublicado.com.br/robots.txt
+                          </Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.btnOpenLink}
+                        onPress={() => {
+                          if (typeof window !== 'undefined') window.open('https://rafaelpublicado.com.br/robots.txt', '_blank');
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <ExternalLink size={13} color="var(--primary-color)" />
+                        <Text style={styles.btnOpenLinkText}>Ver Robots.txt</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={[styles.cardBox, { backgroundColor: '#F8FAFC', borderColor: '#E2E8F0', borderWidth: 1 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Sparkles size={18} color="#D97706" />
+                      <Text style={{ fontWeight: '800', color: '#0F172A', fontSize: 15 }}>
+                        Como Indexar seu Site no Google em Menos de 2 Minutos:
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 13, color: '#475569', lineHeight: 20 }}>
+                      1. Acesse o{' '}
+                      <Text
+                        style={{ color: 'var(--primary-color)', fontWeight: '700', textDecorationLine: 'underline' }}
+                        onPress={() => {
+                          if (typeof window !== 'undefined') window.open('https://search.google.com/search-console', '_blank');
+                        }}
+                      >
+                        Google Search Console
+                      </Text>{' '}
+                      com sua conta Google.{'\n'}
+                      2. Clique em **Adicionar Propriedade** e digite o domínio: <Text style={{ fontWeight: '700' }}>https://rafaelpublicado.com.br</Text>{'\n'}
+                      3. No menu lateral esquerdo, clique em **Sitemaps**.{'\n'}
+                      4. Em "Adicionar novo sitemap", digite: <Text style={{ fontWeight: '700', color: '#006BD6' }}>sitemap.xml</Text> e clique em **Enviar**.{'\n'}
+                      5. Pronto! O robô do Google passará a ler diariamente todos os novos eventos cadastrados e colocá-los nos resultados de busca!
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* ═══════════════════════════════════════════════════════════════════
             0. ABA: CONFIGURAÇÃO DE FOTOS POR EVENTO (ORDEM & OCULTAÇÃO)
         ═══════════════════════════════════════════════════════════════════ */}
@@ -1662,6 +2067,225 @@ const styles = StyleSheet.create({
   },
 
   // Content
+  // ── Analytics Styles ──
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    marginBottom: 20,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: 200,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  statIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginVertical: 2,
+  },
+  statSub: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  subTabsHeader: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 12,
+  },
+  subTabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+  },
+  subTabBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  subTabBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  subTabBtnTextActive: {
+    color: 'var(--primary-color)',
+    fontWeight: '700',
+  },
+  analyticsEventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  analyticsEventName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  analyticsEventSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  metricBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  metricBadgeText: {
+    fontSize: 12,
+    color: '#1E40AF',
+  },
+  btnOpenEventFromAnalytics: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
+  },
+  btnOpenEventFromAnalyticsText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'var(--primary-color)',
+  },
+  searchPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 6,
+    paddingVertical: 6,
+    borderRadius: 100,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  searchPillText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  searchPillCount: {
+    backgroundColor: '#006BD6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 100,
+  },
+  searchPillCountText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  activityTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  activityTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  activityTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  activitySub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  seoStatusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  btnOpenLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  btnOpenLinkText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'var(--primary-color)',
+  },
+
   content: {
     flex: 1,
   },

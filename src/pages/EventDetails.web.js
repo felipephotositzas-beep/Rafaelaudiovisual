@@ -41,6 +41,7 @@ import CartFloatingBar from '../components/CartFloatingBar';
 import CameraCapture from '../components/CameraCapture';
 import { useCart } from '../context/CartContext';
 import { useAdminConfig } from '../context/AdminConfigContext';
+import { trackEventView, trackFaceSearch } from '../utils/analytics';
 import {
   fetchEventById,
   fetchEvents,
@@ -237,6 +238,13 @@ export default function EventDetails() {
   const photosCacheRef = useRef({});
 
   const { eventRules, config, isLoaded: adminConfigLoaded } = useAdminConfig();
+
+  // Analytics: Rastreia acesso à página do evento
+  useEffect(() => {
+    if (id && id !== 'undefined' && eventData?.name) {
+      trackEventView(id, eventData.name);
+    }
+  }, [id, eventData?.name]);
 
   const { addToCart, removeFromCart, isInCart, initializeCartForEvent } =
     useCart();
@@ -522,6 +530,46 @@ export default function EventDetails() {
     setMeta('name', 'twitter:description', description);
     setMeta('name', 'twitter:image', image);
 
+    // Injeta JSON-LD Schema.org para o Evento no Google
+    let schemaScript = document.getElementById('schema-org-event');
+    if (!schemaScript) {
+      schemaScript = document.createElement('script');
+      schemaScript.id = 'schema-org-event';
+      schemaScript.type = 'application/ld+json';
+      schemaScript.setAttribute('data-event-meta', 'true');
+      document.head.appendChild(schemaScript);
+    }
+    schemaScript.text = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      'name': eventName,
+      'description': description,
+      'image': image || 'https://rafaelpublicado.com.br/assets/logo.png',
+      'startDate': eventData?.event_date || eventData?.date || new Date().toISOString().split('T')[0],
+      'location': {
+        '@type': 'Place',
+        'name': eventData?.city || 'Maranhão',
+        'address': {
+          '@type': 'PostalAddress',
+          'addressLocality': eventData?.city || 'Maranhão',
+          'addressCountry': 'BR'
+        }
+      },
+      'organizer': {
+        '@type': 'Organization',
+        'name': 'Rafael Publicado Audiovisual',
+        'url': 'https://rafaelpublicado.com.br'
+      },
+      'offers': {
+        '@type': 'Offer',
+        'url': canonicalUrl,
+        'price': eventData?.price_per_photo || '10.00',
+        'priceCurrency': 'BRL',
+        'availability': 'https://schema.org/InStock',
+        'validFrom': eventData?.created_at || new Date().toISOString()
+      }
+    });
+
     let canonical = document.head.querySelector('link[rel="canonical"]');
     if (!canonical) {
       canonical = document.createElement('link');
@@ -648,6 +696,9 @@ export default function EventDetails() {
   };
 
   const handleFaceSearch = async (imageSource) => {
+    if (id && id !== 'undefined') {
+      trackFaceSearch(id, eventData?.name || 'Evento');
+    }
     setIsCameraVisible(false);
     setIsSearchingFace(true);
     setFaceSearchError('');
