@@ -1,21 +1,29 @@
+// App.web.js - Ponto de Entrada Web
 import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Platform,
+  Linking,
+} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TouchableOpacity, View, Text, StyleSheet, Linking } from 'react-native';
 import {
-  ShoppingBag,
-  ShoppingCart,
   Menu,
   X,
-  Sparkles,
-  Search,
+  ShoppingCart,
+  ShoppingBag,
   HelpCircle,
-  Phone,
   Layers,
   ChevronRight,
   MessageCircle,
+  ShieldCheck,
 } from 'lucide-react-native';
 import { CartProvider, useCart } from './src/context/CartContext';
+import { AdminConfigProvider, useAdminConfig } from './src/context/AdminConfigContext';
 import { useBreakpoint } from './src/hooks/useBreakpoint';
 
 import Home from './src/pages/Home';
@@ -23,6 +31,7 @@ import EventDetails from './src/pages/EventDetails';
 import Checkout from './src/pages/Checkout';
 import MinhasCompras from './src/pages/MinhasCompras';
 import LocationEvents from './src/pages/LocationEvents';
+import AdminPanel from './src/pages/AdminPanel';
 import CartModal from './src/components/CartModal';
 import BrandLogo from './src/components/BrandLogo';
 import { RAFAEL_FAVICON } from './src/constants/favicon';
@@ -52,6 +61,7 @@ const linking = {
       EventDetails: 'evento/:id',
       MinhasCompras: 'minhas-compras',
       Checkout: 'checkout',
+      Admin: 'admin',
     },
   },
 };
@@ -71,25 +81,31 @@ function CartHeaderButton({ navigation, compact }) {
   return (
     <>
       <TouchableOpacity
-        style={compact ? hStyles.cartBtnCompact : hStyles.cartBtn}
+        style={[hStyles.cartBtn, compact && hStyles.cartBtnCompact]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.85}
-        accessible={true}
         accessibilityRole="button"
-        accessibilityLabel={`Carrinho com ${cartItems.length} itens`}
+        accessibilityLabel={`Carrinho de compras, ${cartItems.length} itens`}
       >
         <View style={hStyles.cartIconWrapper}>
-          <ShoppingCart size={18} color={compact ? "#FFFFFF" : "#006BD6"} strokeWidth={2.2} />
+          <ShoppingCart size={18} color="#006BD6" strokeWidth={2.2} />
           <View style={hStyles.cartBadge}>
-            <Text style={hStyles.cartBadgeText}>{cartItems.length}</Text>
+            <Text style={hStyles.cartBadgeText}>
+              {cartItems.length > 99 ? '99+' : cartItems.length}
+            </Text>
           </View>
         </View>
+
         {!compact && (
-          <Text style={hStyles.cartBtnText}>
-            R$ {cartTotal.toFixed(2).replace('.', ',')}
-          </Text>
+          <View style={hStyles.cartTextWrapper}>
+            <Text style={hStyles.cartLabel}>Meu Carrinho</Text>
+            <Text style={hStyles.cartTotal}>
+              R$ {(cartTotal || 0).toFixed(2).replace('.', ',')}
+            </Text>
+          </View>
         )}
       </TouchableOpacity>
+
       <CartModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -99,46 +115,37 @@ function CartHeaderButton({ navigation, compact }) {
   );
 }
 
-// ─── DESKTOP HEADER ──────────────────────────────────────────────────────────
+// ─── DESKTOP HEADER ─────────────────────────────────────────────────────────
 function DesktopHeader({ navigation }) {
+  const { config } = useAdminConfig();
+
   const scrollToSection = (sectionId) => {
     if (typeof window !== 'undefined') {
       const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-        return;
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
     }
-    navigation.navigate('Home');
   };
 
   const openWhatsApp = () => {
-    if (typeof window !== 'undefined') {
-      window.open(
-        'https://api.whatsapp.com/send?phone=5599991297693&text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida%20sobre%20as%20fotos.',
-        '_blank'
-      );
-    } else {
-      Linking.openURL(
-        'https://api.whatsapp.com/send?phone=5599991297693&text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida%20sobre%20as%20fotos.'
-      );
-    }
+    const num = config.branding?.whatsappNumber || '5599991297693';
+    const msg = encodeURIComponent(config.branding?.whatsappMessage || 'Olá, gostaria de tirar uma dúvida sobre as fotos.');
+    Linking.openURL(`https://api.whatsapp.com/send?phone=${num}&text=${msg}`);
   };
 
   return (
     <View style={hStyles.headerDesktop}>
-      <View style={hStyles.innerDesktop}>
+      <View style={hStyles.headerDesktopInner}>
         {/* Brand Logo */}
         <TouchableOpacity
           onPress={() => navigation.navigate('Home')}
           activeOpacity={0.85}
-          style={hStyles.logoBtn}
+          style={hStyles.brandTouch}
         >
           <BrandLogo size="md" />
         </TouchableOpacity>
 
         {/* Center Nav */}
-        <View style={hStyles.nav}>
+        <View style={hStyles.navLinks}>
           <TouchableOpacity
             style={hStyles.navLink}
             onPress={() => scrollToSection('como-funciona')}
@@ -166,6 +173,22 @@ function DesktopHeader({ navigation }) {
           >
             <Text style={hStyles.navLinkText}>Contato</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={hStyles.navLink}
+            onPress={() => navigation.navigate('MinhasCompras')}
+          >
+            <Text style={hStyles.navLinkText}>Minhas Compras</Text>
+          </TouchableOpacity>
+
+          {/* Atalho Painel Admin */}
+          <TouchableOpacity
+            style={[hStyles.navLink, hStyles.adminNavLink]}
+            onPress={() => navigation.navigate('Admin')}
+          >
+            <ShieldCheck size={14} color="#006BD6" />
+            <Text style={[hStyles.navLinkText, { color: '#006BD6', fontWeight: '700' }]}>Painel Admin</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Right Actions */}
@@ -188,6 +211,7 @@ function DesktopHeader({ navigation }) {
 // ─── MOBILE HEADER ───────────────────────────────────────────────────────────
 function MobileHeader({ navigation }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { config } = useAdminConfig();
 
   const handleNav = (route) => {
     setMenuOpen(false);
@@ -204,9 +228,9 @@ function MobileHeader({ navigation }) {
 
   const openWhatsApp = () => {
     setMenuOpen(false);
-    Linking.openURL(
-      'https://api.whatsapp.com/send?phone=5599991297693&text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida%20sobre%20as%20fotos.'
-    );
+    const num = config.branding?.whatsappNumber || '5599991297693';
+    const msg = encodeURIComponent(config.branding?.whatsappMessage || 'Olá, gostaria de tirar uma dúvida sobre as fotos.');
+    Linking.openURL(`https://api.whatsapp.com/send?phone=${num}&text=${msg}`);
   };
 
   return (
@@ -223,7 +247,7 @@ function MobileHeader({ navigation }) {
           <CartHeaderButton navigation={navigation} compact={true} />
           <TouchableOpacity
             style={hStyles.menuBtn}
-            onPress={() => setMenuOpen(v => !v)}
+            onPress={() => setMenuOpen((v) => !v)}
             activeOpacity={0.8}
           >
             {menuOpen ? (
@@ -282,6 +306,15 @@ function MobileHeader({ navigation }) {
             <ChevronRight size={16} color="#94A3B8" style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[hStyles.mobileMenuItem, { backgroundColor: '#EFF6FF' }]}
+            onPress={() => handleNav('Admin')}
+          >
+            <ShieldCheck size={18} color="#006BD6" />
+            <Text style={[hStyles.mobileMenuText, { color: '#006BD6', fontWeight: '700' }]}>Painel Admin</Text>
+            <ChevronRight size={16} color="#006BD6" style={{ marginLeft: 'auto' }} />
+          </TouchableOpacity>
+
           <View style={hStyles.mobileMenuDivider} />
 
           <TouchableOpacity
@@ -306,15 +339,13 @@ function AppHeader({ navigation }) {
   );
 }
 
-// ─── SCREEN WRAPPER ──────────────────────────────────────────────────────────
-function withLayout(ScreenComponent) {
-  return function WrappedScreen({ navigation, route }) {
+// ─── WRAPPER HOC ─────────────────────────────────────────────────────────────
+function withLayout(Component, showHeader = true) {
+  return function WrappedScreen(props) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
-        <AppHeader navigation={navigation} />
-        <View style={{ flex: 1 }}>
-          <ScreenComponent navigation={navigation} route={route} />
-        </View>
+      <View style={styles.screenWrapper}>
+        {showHeader && <AppHeader navigation={props.navigation} />}
+        <Component {...props} />
       </View>
     );
   };
@@ -325,12 +356,15 @@ const EventDetailsWrapped = withLayout(EventDetails);
 const CheckoutWrapped = withLayout(Checkout);
 const MinhasComprasWrapped = withLayout(MinhasCompras);
 const LocationEventsWrapped = withLayout(LocationEvents);
+const AdminWrapped = withLayout(AdminPanel, false); // Admin has its own clean topbar
 
-// ─── APP ─────────────────────────────────────────────────────────────────────
-export default function App() {
+// ─── APP PRINCIPAL ───────────────────────────────────────────────────────────
+function MainNavigation() {
+  const { config } = useAdminConfig();
+
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.title = 'rafaelpublicado';
+      document.title = config.branding?.siteTitle || 'rafaelpublicado';
 
       // Aplica o favicon oficial do Rafael Publicado diretamente via Data URI de alta resolução
       try {
@@ -350,152 +384,168 @@ export default function App() {
         setFavicon('apple-touch-icon', RAFAEL_FAVICON);
       } catch {}
     }
-  }, []);
+  }, [config.branding?.siteTitle]);
 
   return (
-    <CartProvider>
-      <NavigationContainer linking={linking}>
-        <Stack.Navigator
-          initialRouteName="Home"
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: '#F8FAFC' },
-            animation: 'fade',
-          }}
-        >
-          <Stack.Screen name="Home" component={HomeWrapped} />
-          <Stack.Screen name="EventDetails" component={EventDetailsWrapped} />
-          <Stack.Screen name="LocationEvents" component={LocationEventsWrapped} />
-          <Stack.Screen name="Checkout" component={CheckoutWrapped} />
-          <Stack.Screen name="MinhasCompras" component={MinhasComprasWrapped} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </CartProvider>
+    <NavigationContainer linking={linking}>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: config.theme?.backgroundColor || '#F8FAFC' },
+          animation: 'fade',
+        }}
+      >
+        <Stack.Screen name="Home" component={HomeWrapped} />
+        <Stack.Screen name="EventDetails" component={EventDetailsWrapped} />
+        <Stack.Screen name="LocationEvents" component={LocationEventsWrapped} />
+        <Stack.Screen name="Checkout" component={CheckoutWrapped} />
+        <Stack.Screen name="MinhasCompras" component={MinhasComprasWrapped} />
+        <Stack.Screen name="Admin" component={AdminWrapped} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
-// ─── STYLES ──────────────────────────────────────────────────────────────────
+export default function App() {
+  return (
+    <AdminConfigProvider>
+      <CartProvider>
+        <MainNavigation />
+      </CartProvider>
+    </AdminConfigProvider>
+  );
+}
+
+// ─── STYLES ───────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  screenWrapper: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+});
+
 const hStyles = StyleSheet.create({
-  // Desktop header
   headerDesktop: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-    height: 80,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
   },
-  innerDesktop: {
-    flex: 1,
+  headerDesktopInner: {
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+    paddingHorizontal: 24,
+    height: 72,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    maxWidth: Layout.containerXl,
-    alignSelf: 'center',
-    width: '100%',
-    paddingHorizontal: Layout.desktopPadding,
   },
-  logoBtn: {
+  brandTouch: {
     paddingVertical: 4,
   },
-
-  nav: {
+  navLinks: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 28,
   },
   navLink: {
     paddingVertical: 8,
-    paddingHorizontal: 4,
+  },
+  adminNavLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
   navLinkText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#334155',
+    fontWeight: '500',
+    color: '#475569',
+    letterSpacing: -0.1,
   },
-
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
-
+  cartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cartBtnCompact: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  cartIconWrapper: {
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -10,
+    backgroundColor: '#006BD6',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  cartBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cartTextWrapper: {
+    alignItems: 'flex-start',
+  },
+  cartLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  cartTotal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
   btnCtaHeader: {
     backgroundColor: '#006BD6',
+    paddingHorizontal: 18,
     paddingVertical: 10,
-    paddingHorizontal: 22,
-    borderRadius: Radius.full,
-    boxShadow: '0 4px 14px rgba(0, 107, 214, 0.3)',
+    borderRadius: 10,
   },
   btnCtaHeaderText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
-
-  cartBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: Radius.full,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-  },
-  cartBtnCompact: {
-    backgroundColor: '#006BD6',
-    width: 38,
-    height: 38,
-    borderRadius: Radius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    boxShadow: '0 2px 8px rgba(0, 107, 214, 0.35)',
-  },
-  cartIconWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cartBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -10,
-    backgroundColor: '#EF4444',
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  cartBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  cartBtnText: {
-    color: '#0F172A',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-
-  // Mobile header
   headerMobile: {
-    height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    height: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     position: 'sticky',
     top: 0,
     zIndex: 100,
@@ -506,56 +556,46 @@ const hStyles = StyleSheet.create({
     gap: 12,
   },
   menuBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 6,
+    borderRadius: 8,
     backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
   mobileMenu: {
-    position: 'sticky',
-    top: 64,
-    zIndex: 99,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     gap: 4,
-    boxShadow: '0 12px 28px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
   },
   mobileMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: 12,
     paddingVertical: 12,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Radius.md,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
   mobileMenuText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#0F172A',
+    color: '#334155',
+    fontWeight: '500',
   },
   mobileMenuDivider: {
     height: 1,
     backgroundColor: '#E2E8F0',
-    marginVertical: Spacing.two,
+    marginVertical: 8,
   },
   mobileCtaBtn: {
     backgroundColor: '#006BD6',
     paddingVertical: 12,
-    borderRadius: Radius.full,
+    borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.one,
   },
   mobileCtaText: {
     color: '#FFFFFF',
-    fontWeight: '700',
     fontSize: 14,
+    fontWeight: '700',
   },
 });

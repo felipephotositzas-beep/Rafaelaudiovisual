@@ -1,3 +1,4 @@
+// src/pages/Home.web.js
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,6 +9,7 @@ import {
   Image,
   ScrollView,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import {
@@ -23,13 +25,17 @@ import {
   Mail,
   MessageCircle,
   X,
+  Sparkles,
+  ShieldCheck,
+  ExternalLink,
 } from 'lucide-react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import BrandLogo from '../components/BrandLogo';
-import { fetchEvents, fetchAllEvents } from '../utils/api';
+import { fetchMultiPhotographerEvents } from '../utils/api';
 import { mockEventsData } from '../data/mockEvents';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Radius, Spacing, Layout } from '../constants/theme';
+import { useAdminConfig } from '../context/AdminConfigContext';
 
 // Inline Vector Icons for Social Media
 function InstagramIcon({ size = 18, color = '#475569' }) {
@@ -62,6 +68,7 @@ function YoutubeIcon({ size = 18, color = '#475569' }) {
 export default function Home() {
   const navigation = useNavigation();
   const { isMobile, isTablet, isDesktop } = useBreakpoint();
+  const { config } = useAdminConfig();
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,27 +76,19 @@ export default function Home() {
   const [emailInput, setEmailInput] = useState('');
   const [emailSubscribed, setEmailSubscribed] = useState(false);
 
+  const activePhotographers = (config.photographers || []).filter((p) => p.active !== false);
+
   useEffect(() => {
     loadEventsData();
-  }, []);
+  }, [config.photographers]);
 
   const loadEventsData = async () => {
     setLoading(true);
     let hasLoadedApiEvents = false;
 
     try {
-      // 1. Carrega a página 1 instantaneamente
-      const initialRes = await fetchEvents({ page: 1 });
-      if (initialRes.ok) {
-        const initialData = await initialRes.json();
-        if (initialData.results && initialData.results.length > 0) {
-          hasLoadedApiEvents = true;
-          setEvents(initialData.results);
-        }
-      }
-
-      // 2. Busca todas as páginas da API para carregar todos os 143+ eventos do fotógrafo
-      const allRes = await fetchAllEvents();
+      // Busca os eventos para todos os fotógrafos ativos com deduplicação inteligente
+      const allRes = await fetchMultiPhotographerEvents(activePhotographers);
       if (allRes.ok) {
         const allData = await allRes.json();
         if (allData.results && allData.results.length > 0) {
@@ -98,7 +97,7 @@ export default function Home() {
         }
       }
     } catch (error) {
-      console.warn('Não foi possível carregar todos os eventos:', error);
+      console.warn('Não foi possível carregar todos os eventos multi-fotógrafo:', error);
       if (!hasLoadedApiEvents) {
         setEvents(mockEventsData.results);
       }
@@ -115,15 +114,13 @@ export default function Home() {
   };
 
   const openWhatsApp = () => {
+    const num = config.branding?.whatsappNumber || '5599991297693';
+    const msg = encodeURIComponent(config.branding?.whatsappMessage || 'Olá, gostaria de tirar uma dúvida sobre as fotos.');
+    const url = `https://api.whatsapp.com/send?phone=${num}&text=${msg}`;
     if (typeof window !== 'undefined') {
-      window.open(
-        'https://api.whatsapp.com/send?phone=5599991297693&text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida%20sobre%20as%20fotos.',
-        '_blank'
-      );
+      window.open(url, '_blank');
     } else {
-      Linking.openURL(
-        'https://api.whatsapp.com/send?phone=5599991297693&text=Olá,%20gostaria%20de%20tirar%20uma%20dúvida%20sobre%20as%20fotos.'
-      );
+      Linking.openURL(url);
     }
   };
 
@@ -158,11 +155,11 @@ export default function Home() {
     return nameMatch || cityMatch;
   });
 
-  // Renderiza dinamicamente os eventos exclusivos de Rafael Publicado
+  // Renderiza dinamicamente os eventos consolidados
   const displayedGalleries = filteredEvents.map((ev, idx) => ({
     id: ev.id,
     tag: String(idx + 1).padStart(2, '0'),
-    dateBadge: formatDateBadge(ev.event_date),
+    dateBadge: formatDateBadge(ev.event_date || ev.date),
     title: ev.name,
     location: ev.city || 'Maranhão - MA',
     photosCount: 'Ver galeria',
@@ -170,49 +167,101 @@ export default function Home() {
     rawEvent: ev,
   }));
 
+  // Cores dinâmicas do tema White-Label
+  const primaryColor = config.theme?.primaryColor || '#006BD6';
+  const primaryDeep = config.theme?.primaryDeep || '#063A78';
+
   return (
     <ScrollView style={s.page} contentContainerStyle={s.pageContent}>
       {/* ═════════════════════════════════════════════════════════════════════
-          1. HERO SECTION (Light Theme)
+          0. BANNER PROMOCIONAL CONFIGURÁVEL (Redirecionamento para Evento)
+      ═════════════════════════════════════════════════════════════════════ */}
+      {config.banners?.enableHeroPromoBanner && config.banners?.heroPromoBanner?.title && (
+        <View style={s.promoBannerWrapper}>
+          <TouchableOpacity
+            style={[s.promoBannerCard, { backgroundColor: primaryDeep }]}
+            onPress={() => {
+              const banner = config.banners?.heroPromoBanner;
+              if (banner?.targetEventId) {
+                navigation.navigate('EventDetails', { id: banner.targetEventId });
+              } else if (banner?.externalLink) {
+                if (typeof window !== 'undefined') window.open(banner.externalLink, '_blank');
+                else Linking.openURL(banner.externalLink);
+              } else {
+                scrollToSection('galerias-destaque');
+              }
+            }}
+            activeOpacity={0.9}
+          >
+            <View style={s.promoBannerContent}>
+              <View style={s.promoBannerLeft}>
+                <View style={s.promoSparkleBadge}>
+                  <Sparkles size={14} color="#F59E0B" />
+                  <Text style={s.promoSparkleText}>DESTAQUE ESPECIAL</Text>
+                </View>
+                <Text style={s.promoBannerTitle}>{config.banners.heroPromoBanner.title}</Text>
+                {config.banners.heroPromoBanner.subtitle ? (
+                  <Text style={s.promoBannerSubtitle}>{config.banners.heroPromoBanner.subtitle}</Text>
+                ) : null}
+              </View>
+
+              <View style={[s.btnPromoAction, { backgroundColor: primaryColor }]}>
+                <Text style={s.btnPromoActionText}>
+                  {config.banners.heroPromoBanner.buttonText || 'Acessar Galeria'}
+                </Text>
+                <ArrowRight size={14} color="#FFFFFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════
+          1. HERO SECTION (Light Theme & White-Label)
       ═════════════════════════════════════════════════════════════════════ */}
       <View style={[s.hero, isMobile && s.heroMobile]}>
         <View style={[s.heroInner, isMobile && s.heroInnerMobile]}>
           {/* Left 45% Content */}
           <View style={[s.heroLeft, isMobile && s.heroLeftMobile]}>
             <Text style={[s.heroTitle, isMobile && s.heroTitleMobile]}>
-              {isMobile ? (
-                <>
-                  Sejam bem vindos.{'\n'}
-                  <Text style={s.heroTitleBlue}>Rafael Publicado Audiovisual</Text>
-                  {'\n'}– Você primeiro aqui!
-                </>
-              ) : (
-                <>
-                  Sejam bem vindos.{'\n'}
-                  <Text style={s.heroTitleBlue}>Rafael Publicado{'\n'}Audiovisual</Text>{'\n'}
-                  – Você primeiro aqui!
-                </>
-              )}
+              {config.branding?.sloganHero || 'Sejam bem vindos. Rafael Publicado Audiovisual – Você primeiro aqui!'}
             </Text>
 
             <Text style={[s.heroSubtitle, isMobile && s.heroSubtitleMobile]}>
-              Fotos profissionais dos melhores eventos esportivos e momentos especiais.
-              Encontre-se, reviva e compartilhe.
+              {config.branding?.subtitleHero ||
+                'Fotos profissionais dos melhores eventos esportivos e momentos especiais. Encontre-se, reviva e compartilhe.'}
             </Text>
+
+            {/* Fotógrafos Ativos na Vitrine */}
+            {activePhotographers.length > 1 && (
+              <View style={s.multiPhotogBadgeRow}>
+                <Text style={s.multiPhotogLabel}>Cobertura Oficial por:</Text>
+                <View style={s.photogAvatarsRow}>
+                  {activePhotographers.map((p) => (
+                    <View key={p.id} style={s.photogAvatarItem}>
+                      <Image source={{ uri: p.avatar || 'https://ik.imagekit.io/yg7h35ptj/public/assets/temp_nt2ARuj.jpeg' }} style={s.photogMiniAvatar} />
+                      <Text style={s.photogMiniName} numberOfLines={1}>{p.name.split(' ')[0]}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Right 55% Hero Visual */}
           {!isMobile && (
             <View style={s.heroRight}>
-              {/* Concentric Blue Graphic Rings */}
-              <View style={s.blueRingGraphic} />
-              <View style={s.blueGlowAura} />
+              {/* Concentric Graphic Rings */}
+              <View style={[s.blueRingGraphic, { borderColor: `${primaryColor}25` }]} />
+              <View style={[s.blueGlowAura, { backgroundColor: `${primaryColor}15` }]} />
 
-              {/* Main Athlete Visual */}
+              {/* Main Visual */}
               <View style={s.heroMainImageWrapper}>
                 <Image
                   source={{
-                    uri: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=900&auto=format&fit=crop&q=85',
+                    uri:
+                      config.banners?.heroMainImage ||
+                      'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=900&auto=format&fit=crop&q=85',
                   }}
                   style={s.heroAthleteImage}
                   resizeMode="cover"
@@ -220,19 +269,21 @@ export default function Home() {
 
                 {/* Circular Badge: FOTOS PROFISSIONAIS */}
                 <View style={s.badgeFotosProfissionais}>
-                  <Camera size={20} color="#006BD6" />
+                  <Camera size={20} color={primaryColor} />
                   <Text style={s.badgeFotosText}>FOTOS{'\n'}PROFISSIONAIS</Text>
                 </View>
               </View>
 
               {/* 4 Bottom Action Sport Thumbnails */}
               <View style={s.thumbnailsRow}>
-                {[
-                  'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=260&auto=format&fit=crop&q=80',
-                  'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=260&auto=format&fit=crop&q=80',
-                  'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=260&auto=format&fit=crop&q=80',
-                  'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=260&auto=format&fit=crop&q=80',
-                ].map((thumbUrl, idx) => (
+                {(
+                  config.banners?.heroThumbnails || [
+                    'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=260&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=260&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=260&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=260&auto=format&fit=crop&q=80',
+                  ]
+                ).map((thumbUrl, idx) => (
                   <View key={idx} style={s.thumbCard}>
                     <Image
                       source={{ uri: thumbUrl }}
@@ -252,58 +303,58 @@ export default function Home() {
       ═════════════════════════════════════════════════════════════════════ */}
       <View nativeID="como-funciona" style={[s.howSection, isMobile && s.howSectionMobile]}>
         <View style={s.howInner}>
-          <Text style={s.howEyebrow}>COMO FUNCIONA</Text>
+          <Text style={[s.howEyebrow, { color: primaryColor }]}>COMO FUNCIONA</Text>
           <Text style={[s.howTitle, isMobile && s.howTitleMobile]}>
-            Simples, <Text style={s.howTitleBlue}>rápido e seguro</Text>
+            Simples, <Text style={{ color: primaryColor }}>rápido e seguro</Text>
           </Text>
 
           {/* 4 Step Columns / 2x2 Grid on Mobile */}
           <View style={[s.howStepsRow, isMobile && s.howStepsRowMobile]}>
             {/* Step 1 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
-              <View style={s.howStepCircle}>
-                <Search size={18} color="#006BD6" />
+              <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
+                <Search size={18} color={primaryColor} />
               </View>
               <Text style={s.howStepNum}>01</Text>
-              <Text style={s.howStepName}>Encontre sua galeria</Text>
+              <Text style={s.howStepName}>{config.howItWorks?.step1Title || 'Encontre sua galeria'}</Text>
               <Text style={s.howStepDesc}>
-                Procure pelo evento e acesse a galeria.
+                {config.howItWorks?.step1Desc || 'Procure pelo evento e acesse a galeria.'}
               </Text>
             </View>
 
             {/* Step 2 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
-              <View style={s.howStepCircle}>
-                <ScanFace size={18} color="#006BD6" />
+              <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
+                <ScanFace size={18} color={primaryColor} />
               </View>
               <Text style={s.howStepNum}>02</Text>
-              <Text style={s.howStepName}>Achar suas fotos</Text>
+              <Text style={s.howStepName}>{config.howItWorks?.step2Title || 'Achar suas fotos'}</Text>
               <Text style={s.howStepDesc}>
-                Use o reconhecimento facial rápido.
+                {config.howItWorks?.step2Desc || 'Use o reconhecimento facial rápido.'}
               </Text>
             </View>
 
             {/* Step 3 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
-              <View style={s.howStepCircle}>
-                <ShoppingCart size={18} color="#006BD6" />
+              <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
+                <ShoppingCart size={18} color={primaryColor} />
               </View>
               <Text style={s.howStepNum}>03</Text>
-              <Text style={s.howStepName}>Escolha e compre</Text>
+              <Text style={s.howStepName}>{config.howItWorks?.step3Title || 'Escolha e compre'}</Text>
               <Text style={s.howStepDesc}>
-                Selecione as fotos e pague via PIX ou Cartão.
+                {config.howItWorks?.step3Desc || 'Selecione as fotos e pague via PIX ou Cartão.'}
               </Text>
             </View>
 
             {/* Step 4 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
-              <View style={s.howStepCircle}>
-                <Download size={18} color="#006BD6" />
+              <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
+                <Download size={18} color={primaryColor} />
               </View>
               <Text style={s.howStepNum}>04</Text>
-              <Text style={s.howStepName}>Baixe e compartilhe</Text>
+              <Text style={s.howStepName}>{config.howItWorks?.step4Title || 'Baixe e compartilhe'}</Text>
               <Text style={s.howStepDesc}>
-                Após o pagamento receba seus arquivos direto no Whatsapp.
+                {config.howItWorks?.step4Desc || 'Após o pagamento receba seus arquivos direto no Whatsapp.'}
               </Text>
             </View>
           </View>
@@ -311,7 +362,7 @@ export default function Home() {
       </View>
 
       {/* ═════════════════════════════════════════════════════════════════════
-          3. GALERIAS EM DESTAQUE
+          3. GALERIAS EM DESTAQUE (Mescladas e Deduplicadas)
       ═════════════════════════════════════════════════════════════════════ */}
       <View nativeID="galerias-destaque" style={s.galleriesSection}>
         <View style={s.galleriesInner}>
@@ -319,7 +370,7 @@ export default function Home() {
           <View style={s.sectionTitleHeader}>
             <View style={s.titleLine} />
             <Text style={s.sectionHeaderTitle}>
-              GALERIAS <Text style={s.sectionHeaderTitleBlue}>EM DESTAQUE</Text>
+              GALERIAS <Text style={{ color: primaryColor }}>EM DESTAQUE</Text>
             </Text>
             <View style={s.titleLine} />
           </View>
@@ -327,7 +378,7 @@ export default function Home() {
           {/* Event Search Bar */}
           <View style={[s.searchBarContainer, isMobile && s.searchBarContainerMobile]}>
             <View style={s.searchBarWrapper}>
-              <Search size={18} color="#006BD6" style={s.searchIcon} />
+              <Search size={18} color={primaryColor} style={s.searchIcon} />
               <TextInput
                 style={s.searchInput}
                 placeholder="Buscar evento por nome ou cidade..."
@@ -360,8 +411,16 @@ export default function Home() {
             </View>
           </View>
 
+          {/* Loading Indicator */}
+          {loading && (
+            <View style={s.loadingContainer}>
+              <ActivityIndicator size="large" color={primaryColor} />
+              <Text style={s.loadingText}>Carregando galerias oficiais...</Text>
+            </View>
+          )}
+
           {/* Empty State when search returns 0 results */}
-          {displayedGalleries.length === 0 ? (
+          {!loading && displayedGalleries.length === 0 ? (
             <View style={s.emptyStateContainer}>
               <View style={s.emptyIconCircle}>
                 <Search size={28} color="#94A3B8" />
@@ -371,18 +430,15 @@ export default function Home() {
                 Não encontramos nenhum evento correspondente a "{searchQuery}".
               </Text>
               <TouchableOpacity
-                style={s.btnResetSearch}
+                style={[s.btnResetSearch, { backgroundColor: primaryColor }]}
                 onPress={() => setSearchQuery('')}
                 activeOpacity={0.85}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel="Limpar busca e ver todos os eventos"
               >
                 <Text style={s.btnResetSearchText}>Ver todos os eventos</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            /* Cards Grid com os eventos de Rafael Publicado */
+            /* Cards Grid */
             <View style={[s.cardsGrid, isMobile && s.cardsGridMobile]}>
               {displayedGalleries.map((gal, idx) => (
                 <View key={gal.id || idx} style={[s.cardWrapper, !isMobile && { minWidth: 260, flexBasis: '22%', flexGrow: 1, marginBottom: 24 }]}>
@@ -395,9 +451,6 @@ export default function Home() {
                       })
                     }
                     activeOpacity={0.9}
-                    accessible={true}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Acessar galeria do evento ${gal.title}, realizada em ${gal.location}`}
                   >
                     {/* Card Image */}
                     <View style={[s.cardImageContainer, isMobile && s.cardImageContainerMobile]}>
@@ -405,10 +458,9 @@ export default function Home() {
                         source={{ uri: gal.image }}
                         style={s.cardImage}
                         resizeMode="cover"
-                        accessibilityLabel={`Foto de capa do evento ${gal.title}`}
                       />
 
-                      {/* Date Badge if present */}
+                      {/* Date Badge */}
                       {gal.dateBadge && (
                         <View style={[s.dateBadge, isMobile && s.dateBadgeMobile]}>
                           <Text style={[s.dateBadgeDay, isMobile && s.dateBadgeDayMobile]}>
@@ -441,7 +493,7 @@ export default function Home() {
                           <Text style={[s.photosCountText, isMobile && s.photosCountTextMobile]}>{gal.photosCount}</Text>
                         </View>
 
-                        <View style={[s.btnVerGaleria, isMobile && s.btnVerGaleriaMobile]}>
+                        <View style={[s.btnVerGaleria, { backgroundColor: primaryColor }, isMobile && s.btnVerGaleriaMobile]}>
                           <Text style={[s.btnVerGaleriaText, isMobile && s.btnVerGaleriaTextMobile]}>Ver galeria</Text>
                           {isMobile && <ArrowRight size={11} color="#FFFFFF" />}
                         </View>
@@ -456,97 +508,67 @@ export default function Home() {
       </View>
 
       {/* ═════════════════════════════════════════════════════════════════════
-          4. DIFERENCIAIS E GARANTIAS (Trust Pillars)
+          4. PERGUNTAS FREQUENTES (FAQ)
       ═════════════════════════════════════════════════════════════════════ */}
-      <View style={[s.trustSection, isMobile && s.trustSectionMobile]}>
-        <View style={s.trustInner}>
-          <View style={[s.trustGrid, isMobile && s.trustGridMobile]}>
-            {/* Feature 1 */}
-            <View style={[s.trustCard, isMobile && s.trustCardMobile]}>
-              <View style={s.trustIconCircle}>
-                <Camera size={22} color="#006BD6" />
-              </View>
-              <View style={isMobile && s.trustTextWrapperMobile}>
-                <Text style={s.trustTitle}>Fotos profissionais</Text>
-                <Text style={s.trustDesc}>
-                  Equipamentos de alta performance e qualidade excepcional.
-                </Text>
-              </View>
-            </View>
+      <View nativeID="duvidas" style={s.faqSection}>
+        <View style={s.faqInner}>
+          <Text style={[s.faqEyebrow, { color: primaryColor }]}>DÚVIDAS FREQUENTES</Text>
+          <Text style={s.faqTitle}>Perguntas Frequentes</Text>
 
-            {/* Feature 2 */}
-            <View style={[s.trustCard, isMobile && s.trustCardMobile]}>
-              <View style={s.trustIconCircle}>
-                <Lock size={22} color="#006BD6" />
+          <View style={s.faqList}>
+            {[
+              {
+                q: 'Como encontro minhas fotos no evento?',
+                a: 'Basta entrar na galeria do seu evento e clicar em "Localizar Minhas Fotos". Faça o upload de uma selfie nítida para nossa inteligência artificial buscar seu rosto em segundos.',
+              },
+              {
+                q: 'Como recebo as fotos após o pagamento?',
+                a: 'Após a confirmação instantânea do PIX ou aprovação do Cartão, suas fotos em alta resolução serão enviadas diretamente no seu WhatsApp e ficam disponíveis para download imediato.',
+              },
+              {
+                q: 'As fotos possuem marca d\'água?',
+                a: 'Não! As fotos compradas são entregues limpas, em alta resolução original e sem qualquer marca d\'água.',
+              },
+            ].map((faq, i) => (
+              <View key={i} style={s.faqCard}>
+                <Text style={s.faqQuestion}>{faq.q}</Text>
+                <Text style={s.faqAnswer}>{faq.a}</Text>
               </View>
-              <View style={isMobile && s.trustTextWrapperMobile}>
-                <Text style={s.trustTitle}>Compra segura</Text>
-                <Text style={s.trustDesc}>
-                  Ambiente 100% seguro e pagamentos protegidos com criptografia.
-                </Text>
-              </View>
-            </View>
-
-            {/* Feature 3 */}
-            <View style={[s.trustCard, isMobile && s.trustCardMobile]}>
-              <View style={s.trustIconCircle}>
-                <DownloadCloud size={22} color="#006BD6" />
-              </View>
-              <View style={isMobile && s.trustTextWrapperMobile}>
-                <Text style={s.trustTitle}>Download ilimitado</Text>
-                <Text style={s.trustDesc}>
-                  Baixe suas fotos em alta resolução quantas vezes quiser.
-                </Text>
-              </View>
-            </View>
+            ))}
           </View>
         </View>
       </View>
 
       {/* ═════════════════════════════════════════════════════════════════════
-          5. NEWSLETTER BANNER (Light Theme & Mobile Optimized)
+          5. NEWSLETTER
       ═════════════════════════════════════════════════════════════════════ */}
-      <View style={[s.newsletterSection, isMobile && s.newsletterSectionMobile]}>
+      <View style={s.newsletterSection}>
         <View style={s.newsletterInner}>
-          <View style={[s.newsletterCard, isMobile && s.newsletterCardMobile]}>
-            {/* Left Mail Icon & Text */}
+          <View style={[s.newsletterCard, { backgroundColor: primaryColor }, isMobile && s.newsletterCardMobile]}>
             <View style={[s.newsletterLeft, isMobile && s.newsletterLeftMobile]}>
               <View style={s.newsletterMailCircle}>
-                <Mail size={22} color="#006BD6" />
+                <Mail size={22} color={primaryColor} />
               </View>
               <View style={s.newsletterTextGroup}>
-                <Text style={s.newsletterTitle}>
-                  Fique por dentro dos próximos eventos
-                </Text>
-                <Text style={s.newsletterSubtitle}>
-                  Receba novidades e avisos de novas galerias em primeira mão.
-                </Text>
+                <Text style={s.newsletterTitle}>Fique por dentro dos próximos eventos</Text>
+                <Text style={s.newsletterSubtitle}>Receba em primeira mão quando as fotos forem publicadas.</Text>
               </View>
             </View>
 
-            {/* Right Input Form */}
             <View style={[s.newsletterForm, isMobile && s.newsletterFormMobile]}>
               <TextInput
                 style={[s.newsletterInput, isMobile && s.newsletterInputMobile]}
-                placeholder="Seu melhor e-mail"
+                placeholder="Seu melhor e-mail..."
                 placeholderTextColor="#94A3B8"
                 value={emailInput}
                 onChangeText={setEmailInput}
-                keyboardType="email-address"
-                accessible={true}
-                accessibilityLabel="Digite seu e-mail para receber novidades"
               />
               <TouchableOpacity
                 style={[s.btnSubscribe, isMobile && s.btnSubscribeMobile]}
                 onPress={handleSubscribe}
                 activeOpacity={0.88}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel="Cadastrar e-mail na newsletter"
               >
-                <Text style={s.btnSubscribeText}>
-                  {emailSubscribed ? 'Cadastrado com sucesso!' : 'Quero receber'}
-                </Text>
+                <Text style={s.btnSubscribeText}>{emailSubscribed ? 'Inscrito ✓' : 'Inscrever-se'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -554,121 +576,68 @@ export default function Home() {
       </View>
 
       {/* ═════════════════════════════════════════════════════════════════════
-          5. FOOTER (Light Theme & Accessible)
+          6. FOOTER (Light Theme)
       ═════════════════════════════════════════════════════════════════════ */}
-      <View nativeID="duvidas" style={[s.footer, isMobile && s.footerMobile]}>
+      <View style={[s.footer, isMobile && s.footerMobile]}>
         <View style={s.footerInner}>
-          {/* Top Row with 4 Columns */}
           <View style={[s.footerGrid, isMobile && s.footerGridMobile]}>
-            {/* Col 1: Brand Logo */}
             <View style={s.footerColBrand}>
-              <BrandLogo size={isMobile ? 'sm' : 'md'} />
+              <BrandLogo size="md" />
               <Text style={s.footerBrandDesc}>
-                Plataforma oficial de fotografia profissional e venda de galerias digitais.
+                {config.branding?.subtitleHero ||
+                  'Especialista em fotografia esportiva, eventos e momentos únicos. Eternizando cada conquista.'}
               </Text>
             </View>
 
-            {/* Col 2: Navegação */}
             <View style={s.footerCol}>
               <Text style={s.footerColTitle}>NAVEGAÇÃO</Text>
-              <TouchableOpacity
-                onPress={() => scrollToSection('como-funciona')}
-                accessible={true}
-                accessibilityRole="link"
-                accessibilityLabel="Como funciona"
-                style={s.footerLinkTouchable}
-              >
+              <TouchableOpacity style={s.footerLinkTouchable} onPress={() => scrollToSection('como-funciona')}>
                 <Text style={s.footerLink}>Como funciona</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => scrollToSection('galerias-destaque')}
-                accessible={true}
-                accessibilityRole="link"
-                accessibilityLabel="Galerias"
-                style={s.footerLinkTouchable}
-              >
+              <TouchableOpacity style={s.footerLinkTouchable} onPress={() => scrollToSection('galerias-destaque')}>
                 <Text style={s.footerLink}>Galerias</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => scrollToSection('duvidas')}
-                accessible={true}
-                accessibilityRole="link"
-                accessibilityLabel="Dúvidas"
-                style={s.footerLinkTouchable}
-              >
-                <Text style={s.footerLink}>Dúvidas</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={openWhatsApp}
-                accessible={true}
-                accessibilityRole="link"
-                accessibilityLabel="Contato pelo WhatsApp"
-                style={s.footerLinkTouchable}
-              >
-                <Text style={s.footerLink}>Contato</Text>
+              <TouchableOpacity style={s.footerLinkTouchable} onPress={() => scrollToSection('duvidas')}>
+                <Text style={s.footerLink}>Dúvidas frequentes</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Col 3: Legal / Suporte */}
             <View style={s.footerCol}>
-              <Text style={s.footerColTitle}>LEGAL</Text>
-              <TouchableOpacity style={s.footerLinkTouchable} accessible={true} accessibilityRole="link">
-                <Text style={s.footerLink}>Termos de uso</Text>
+              <Text style={s.footerColTitle}>PAINEL & ATENDIMENTO</Text>
+              <TouchableOpacity style={s.footerLinkTouchable} onPress={openWhatsApp}>
+                <Text style={s.footerLink}>Suporte via WhatsApp</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.footerLinkTouchable} accessible={true} accessibilityRole="link">
-                <Text style={s.footerLink}>Política de privacidade</Text>
+              <TouchableOpacity style={s.footerLinkTouchable} onPress={() => navigation.navigate('MinhasCompras')}>
+                <Text style={s.footerLink}>Minhas Compras</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.footerLinkTouchable} accessible={true} accessibilityRole="link">
-                <Text style={s.footerLink}>Trocas e reembolsos</Text>
+              <TouchableOpacity
+                style={[s.footerLinkTouchable, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                onPress={() => navigation.navigate('Admin')}
+              >
+                <ShieldCheck size={14} color={primaryColor} />
+                <Text style={[s.footerLink, { color: primaryColor, fontWeight: '700' }]}>Painel Administrativo</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Col 4: Siga-nos */}
             <View style={s.footerCol}>
-              <Text style={s.footerColTitle}>SIGA-NOS</Text>
+              <Text style={s.footerColTitle}>REDES SOCIAIS</Text>
               <View style={s.socialIconsRow}>
                 <TouchableOpacity
                   style={s.socialIconBtn}
-                  accessible={true}
-                  accessibilityRole="link"
-                  accessibilityLabel="Acessar Instagram"
-                  onPress={() => Linking.openURL('https://www.instagram.com/rafaelpublicado')}
+                  onPress={() => Platform.OS === 'web' && window.open(config.branding?.instagramUrl || 'https://instagram.com/rafaelpublicado', '_blank')}
                 >
-                  <InstagramIcon size={18} color="#475569" />
+                  <InstagramIcon size={18} color="#0F172A" />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.socialIconBtn}
-                  accessible={true}
-                  accessibilityRole="link"
-                  accessibilityLabel="Acessar Facebook"
-                >
-                  <FacebookIcon size={18} color="#475569" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.socialIconBtn}
-                  accessible={true}
-                  accessibilityRole="link"
-                  accessibilityLabel="Acessar YouTube"
-                >
-                  <YoutubeIcon size={18} color="#475569" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={s.socialIconBtn}
-                  onPress={openWhatsApp}
-                  accessible={true}
-                  accessibilityRole="link"
-                  accessibilityLabel="Conversar no WhatsApp"
-                >
-                  <MessageCircle size={18} color="#475569" />
+                <TouchableOpacity style={s.socialIconBtn} onPress={openWhatsApp}>
+                  <MessageCircle size={18} color="#10B981" />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
 
-          {/* Bottom Copyright */}
           <View style={s.footerBottom}>
             <Text style={s.footerCopyrightText}>
-              © {new Date().getFullYear()} Rafael Publicado Audiovisual. Todos os direitos reservados.
+              © {new Date().getFullYear()} {config.branding?.siteName || 'Rafael Publicado Audiovisual'}. Todos os direitos reservados.
             </Text>
           </View>
         </View>
@@ -677,6 +646,7 @@ export default function Home() {
   );
 }
 
+// ─── ESTILOS DA HOME ─────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
     flex: 1,
@@ -686,17 +656,78 @@ const s = StyleSheet.create({
     paddingBottom: 0,
   },
 
-  // ── HERO ───────────────────────────────────────────────────────────────────
-  hero: {
-    paddingVertical: 36,
+  // Promo Banner
+  promoBannerWrapper: {
+    maxWidth: Layout.containerXl,
+    alignSelf: 'center',
+    width: '100%',
     paddingHorizontal: Layout.desktopPadding,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingTop: 16,
+  },
+  promoBannerCard: {
+    borderRadius: Radius.lg,
+    padding: 16,
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+  },
+  promoBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  promoBannerLeft: {
+    flex: 1,
+    minWidth: 260,
+    gap: 4,
+  },
+  promoSparkleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  promoSparkleText: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  promoBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  promoBannerSubtitle: {
+    color: '#E2E8F0',
+    fontSize: 12,
+  },
+  btnPromoAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  btnPromoActionText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+
+  // Hero Section
+  hero: {
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 64,
+    paddingHorizontal: Layout.desktopPadding,
   },
   heroMobile: {
-    paddingVertical: 20,
+    paddingVertical: 32,
     paddingHorizontal: Spacing.four,
   },
   heroInner: {
@@ -706,83 +737,117 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 40,
+    gap: 48,
   },
   heroInnerMobile: {
     flexDirection: 'column',
-    gap: 0,
+    gap: 24,
   },
-
   heroLeft: {
-    flex: 5,
-    alignItems: 'flex-start',
+    flex: 1,
+    maxWidth: 540,
+    gap: 16,
   },
   heroLeftMobile: {
-    width: '100%',
+    maxWidth: '100%',
+    textAlign: 'center',
+    alignItems: 'center',
   },
-
   heroTitle: {
-    fontSize: 50,
-    lineHeight: 56,
-    fontWeight: '800',
+    fontSize: 38,
+    fontWeight: '900',
     color: '#0F172A',
-    letterSpacing: -1,
-    marginBottom: Spacing.four,
+    lineHeight: 46,
+    letterSpacing: -0.5,
   },
   heroTitleMobile: {
-    fontSize: 28,
+    fontSize: 26,
     lineHeight: 34,
-    marginBottom: 8,
+    textAlign: 'center',
   },
-  heroTitleBlue: {
-    color: '#006BD6',
-  },
-
   heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: 15,
     color: '#475569',
-    maxWidth: 480,
-    marginBottom: 0,
+    lineHeight: 22,
   },
   heroSubtitleMobile: {
     fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 0,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  multiPhotogBadgeRow: {
+    marginTop: 8,
+    gap: 6,
+  },
+  multiPhotogLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  photogAvatarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  photogAvatarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  photogMiniAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  photogMiniName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
   },
 
-  // Right Hero Visual
+  // Hero Right Visual
   heroRight: {
-    flex: 5.5,
+    flex: 1,
+    maxWidth: 520,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   blueRingGraphic: {
     position: 'absolute',
-    width: 420,
-    height: 420,
-    borderRadius: 210,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 107, 214, 0.2)',
+    width: 440,
+    height: 440,
+    borderRadius: 220,
+    borderWidth: 2,
+    zIndex: 0,
   },
   blueGlowAura: {
     position: 'absolute',
-    width: 340,
-    height: 340,
-    borderRadius: 170,
-    backgroundColor: 'rgba(0, 107, 214, 0.06)',
+    width: 380,
+    height: 380,
+    borderRadius: 190,
+    zIndex: 0,
+    filter: 'blur(40px)',
   },
   heroMainImageWrapper: {
-    width: '100%',
-    maxWidth: 480,
-    height: 340,
-    borderRadius: Radius.xl,
+    width: 380,
+    height: 380,
+    borderRadius: 190,
     overflow: 'hidden',
+    borderWidth: 6,
+    borderColor: '#FFFFFF',
+    boxShadow: '0 12px 36px rgba(0, 107, 214, 0.2)',
+    zIndex: 1,
     position: 'relative',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    boxShadow: '0 12px 36px rgba(0, 0, 0, 0.1)',
   },
   heroAthleteImage: {
     width: '100%',
@@ -790,59 +855,54 @@ const s = StyleSheet.create({
   },
   badgeFotosProfissionais: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: Radius.lg,
+    bottom: 16,
+    right: 24,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 8,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.12)',
   },
   badgeFotosText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#0F172A',
     lineHeight: 12,
   },
-
-  // 4 Action Thumbnails
   thumbnailsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 16,
-    width: '100%',
-    maxWidth: 480,
+    marginTop: 20,
+    zIndex: 2,
   },
   thumbCard: {
-    flex: 1,
-    height: 70,
-    borderRadius: Radius.md,
+    width: 76,
+    height: 76,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
   },
   thumbImage: {
     width: '100%',
     height: '100%',
   },
 
-  // ── COMO FUNCIONA ─────────────────────────────────────────────────────────
+  // Como Funciona
   howSection: {
-    paddingVertical: 36,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 56,
     paddingHorizontal: Layout.desktopPadding,
-    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderColor: '#E2E8F0',
   },
   howSectionMobile: {
-    paddingVertical: 20,
+    paddingVertical: 32,
     paddingHorizontal: Spacing.four,
   },
   howInner: {
@@ -852,93 +912,73 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   howEyebrow: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#006BD6',
-    letterSpacing: 2,
-    marginBottom: 4,
+    letterSpacing: 1.5,
+    marginBottom: 6,
   },
   howTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0F172A',
-    letterSpacing: -0.5,
+    marginBottom: 36,
+  },
+  howTitleMobile: {
+    fontSize: 20,
     marginBottom: 24,
     textAlign: 'center',
   },
-  howTitleMobile: {
-    fontSize: 18,
-    marginBottom: 16,
-  },
-  howTitleBlue: {
-    color: '#006BD6',
-  },
   howStepsRow: {
     flexDirection: 'row',
-    gap: 16,
+    justifyContent: 'space-between',
     width: '100%',
+    gap: 20,
   },
   howStepsRowMobile: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    gap: 16,
   },
   howStepItem: {
     flex: 1,
     alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+    textAlign: 'center',
+    gap: 6,
   },
   howStepItemMobile: {
-    flex: undefined,
-    width: '48%',
-    padding: 10,
-    marginBottom: 4,
+    flexDirection: 'row',
+    textAlign: 'left',
+    alignItems: 'center',
+    gap: 12,
   },
   howStepCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   howStepNum: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
-    color: '#006BD6',
-    marginBottom: 2,
+    color: '#94A3B8',
   },
   howStepName: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 3,
-    textAlign: 'center',
   },
   howStepDesc: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#64748B',
-    lineHeight: 14,
     textAlign: 'center',
-    maxWidth: 180,
+    lineHeight: 16,
   },
 
-  // ── GALERIAS EM DESTAQUE ──────────────────────────────────────────────────
+  // Galerias em Destaque
   galleriesSection: {
-    paddingVertical: 48,
+    paddingVertical: 56,
     paddingHorizontal: Layout.desktopPadding,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
   },
   galleriesInner: {
     maxWidth: Layout.containerXl,
@@ -950,164 +990,137 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 16,
-    marginBottom: 36,
+    marginBottom: 24,
   },
   titleLine: {
+    flex: 1,
     height: 1,
-    backgroundColor: '#CBD5E1',
-    width: 60,
+    backgroundColor: '#E2E8F0',
   },
   sectionHeaderTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#0F172A',
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
-  sectionHeaderTitleBlue: {
-    color: '#006BD6',
-  },
-
-  // ── SEARCH BAR ───────────────────────────────────────────────────────────
   searchBarContainer: {
-    width: '100%',
-    maxWidth: 640,
-    alignSelf: 'center',
     marginBottom: 28,
+    alignItems: 'center',
   },
   searchBarContainerMobile: {
-    maxWidth: '100%',
-    marginBottom: 20,
+    width: '100%',
   },
   searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: Radius.full,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#CBD5E1',
+    borderRadius: 30,
     paddingHorizontal: 16,
     height: 48,
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
+    width: '100%',
+    maxWidth: 540,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
   },
   searchIcon: {
     marginRight: 10,
   },
   searchInput: {
     flex: 1,
-    height: '100%',
-    color: '#0F172A',
     fontSize: 14,
+    color: '#0F172A',
     outlineStyle: 'none',
   },
   searchClearBtn: {
-    padding: 6,
-    borderRadius: Radius.full,
-    backgroundColor: '#F1F5F9',
-    marginLeft: 8,
+    padding: 4,
   },
   searchMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
     marginTop: 8,
   },
   searchResultCount: {
     fontSize: 12,
     color: '#64748B',
     fontWeight: '500',
-    textAlign: 'center',
   },
-
-  // ── EMPTY STATE ───────────────────────────────────────────────────────────
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
   emptyStateContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 48,
-    paddingHorizontal: 20,
-    backgroundColor: '#F8FAFC',
-    borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    width: '100%',
+    gap: 10,
   },
   emptyIconCircle: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 13,
     color: '#64748B',
-    textAlign: 'center',
-    maxWidth: 360,
-    marginBottom: 18,
   },
   btnResetSearch: {
-    backgroundColor: '#006BD6',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: Radius.full,
-    boxShadow: '0 4px 12px rgba(0, 107, 214, 0.2)',
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
   btnResetSearchText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
 
+  // Cards Grid
   cardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 20,
-    width: '100%',
+    justifyContent: 'center',
   },
   cardsGridMobile: {
     flexDirection: 'column',
-    gap: 12,
+    gap: 16,
   },
   cardWrapper: {
-    flex: 1,
+    maxWidth: 320,
   },
-
   eventCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: Radius.lg,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
   },
   eventCardMobile: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: Radius.lg,
-    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.04)',
+    height: 110,
   },
   cardImageContainer: {
     width: '100%',
-    height: 190,
+    height: 180,
     position: 'relative',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E2E8F0',
   },
   cardImageContainerMobile: {
-    width: 105,
-    height: 90,
-    borderRadius: Radius.md,
-    overflow: 'hidden',
-    flexShrink: 0,
+    width: 110,
+    height: '100%',
   },
   cardImage: {
     width: '100%',
@@ -1117,227 +1130,177 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: Radius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
     alignItems: 'center',
-    zIndex: 2,
-    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
   },
   dateBadgeMobile: {
-    top: 4,
-    left: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    top: 6,
+    left: 6,
   },
   dateBadgeDay: {
-    fontSize: 12,
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: '800',
-    color: '#0F172A',
-    lineHeight: 14,
-  },
-  dateBadgeDayMobile: {
-    fontSize: 10,
     lineHeight: 12,
   },
-  dateBadgeMonth: {
+  dateBadgeDayMobile: {
     fontSize: 9,
-    fontWeight: '600',
-    color: '#64748B',
+  },
+  dateBadgeMonth: {
+    color: '#93C5FD',
+    fontSize: 8,
+    fontWeight: '700',
   },
   dateBadgeMonthMobile: {
-    fontSize: 8,
+    fontSize: 7,
   },
-
   tagPill: {
     position: 'absolute',
-    bottom: 10,
-    left: 12,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 107, 214, 0.4)',
-    borderRadius: Radius.full,
-    paddingHorizontal: 8,
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    zIndex: 2,
   },
   tagPillMobile: {
-    bottom: 4,
-    left: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    top: 6,
+    right: 6,
   },
   tagPillText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#006BD6',
+    color: '#0F172A',
   },
   tagPillTextMobile: {
     fontSize: 8,
   },
-
   cardBody: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
+    padding: 14,
+    gap: 6,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   cardBodyMobile: {
-    padding: 0,
-    paddingLeft: 12,
-    paddingRight: 4,
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
+    padding: 10,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 4,
+    lineHeight: 18,
   },
   cardTitleMobile: {
-    fontSize: 13.5,
-    lineHeight: 18,
-    fontWeight: '700',
-    marginBottom: 2,
+    fontSize: 12,
+    lineHeight: 15,
   },
   cardLocation: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
-    marginBottom: 16,
   },
   cardLocationMobile: {
-    fontSize: 11,
-    marginBottom: 6,
+    fontSize: 10,
   },
   cardFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    marginTop: 6,
   },
   cardFooterRowMobile: {
-    paddingTop: 0,
-    borderTopWidth: 0,
     marginTop: 2,
   },
   photosCountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   photosCountText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#64748B',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   photosCountTextMobile: {
-    fontSize: 11,
+    fontSize: 10,
   },
   btnVerGaleria: {
-    backgroundColor: '#006BD6',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: Radius.full,
-  },
-  btnVerGaleriaMobile: {
-    paddingVertical: 5,
     paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
+  btnVerGaleriaMobile: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   btnVerGaleriaText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
   btnVerGaleriaTextMobile: {
-    fontSize: 11,
+    fontSize: 10,
   },
 
-  // ── DIFERENCIAIS E GARANTIAS (Bottom Trust Section) ──────────────────────
-  trustSection: {
-    paddingVertical: 44,
-    paddingHorizontal: Layout.desktopPadding,
+  // FAQ
+  faqSection: {
     backgroundColor: '#FFFFFF',
+    paddingVertical: 56,
+    paddingHorizontal: Layout.desktopPadding,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderBottomWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  trustSectionMobile: {
-    paddingVertical: 24,
-    paddingHorizontal: Spacing.four,
-  },
-  trustInner: {
-    maxWidth: Layout.containerXl,
+  faqInner: {
+    maxWidth: Layout.containerLg,
     alignSelf: 'center',
     width: '100%',
-  },
-  trustGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 28,
-  },
-  trustGridMobile: {
-    flexDirection: 'column',
-    gap: 12,
-  },
-  trustCard: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-    borderRadius: Radius.lg,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-  },
-  trustCardMobile: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    padding: 14,
   },
-  trustIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    flexShrink: 0,
-  },
-  trustTextWrapperMobile: {
-    flex: 1,
-  },
-  trustTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+  faqEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
     marginBottom: 4,
   },
-  trustDesc: {
-    fontSize: 12,
-    color: '#64748B',
+  faqTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 28,
+  },
+  faqList: {
+    width: '100%',
+    gap: 12,
+  },
+  faqCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 6,
+  },
+  faqQuestion: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  faqAnswer: {
+    fontSize: 13,
+    color: '#475569',
     lineHeight: 18,
   },
 
-  // ── NEWSLETTER BANNER (Light Theme) ───────────────────────────────────────
+  // Newsletter
   newsletterSection: {
-    paddingVertical: 40,
+    paddingVertical: 48,
     paddingHorizontal: Layout.desktopPadding,
-    backgroundColor: '#F8FAFC',
-  },
-  newsletterSectionMobile: {
-    paddingVertical: 24,
-    paddingHorizontal: Spacing.four,
   },
   newsletterInner: {
     maxWidth: Layout.containerXl,
@@ -1345,7 +1308,6 @@ const s = StyleSheet.create({
     width: '100%',
   },
   newsletterCard: {
-    backgroundColor: '#006BD6',
     borderRadius: Radius.xl,
     paddingVertical: 28,
     paddingHorizontal: 32,
@@ -1361,7 +1323,6 @@ const s = StyleSheet.create({
     padding: 20,
     gap: 16,
   },
-
   newsletterLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1394,7 +1355,6 @@ const s = StyleSheet.create({
     color: '#E0F2FE',
     lineHeight: 16,
   },
-
   newsletterForm: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1411,12 +1371,11 @@ const s = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
     paddingHorizontal: 14,
     height: 44,
     color: '#0F172A',
     fontSize: 13,
+    outlineStyle: 'none',
   },
   newsletterInputMobile: {
     width: '100%',
@@ -1428,7 +1387,6 @@ const s = StyleSheet.create({
     borderRadius: Radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)',
   },
   btnSubscribeMobile: {
     width: '100%',
@@ -1439,7 +1397,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // ── FOOTER (Light Theme) ──────────────────────────────────────────────────
+  // Footer
   footer: {
     paddingTop: 56,
     paddingBottom: 36,
@@ -1497,7 +1455,6 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: '#475569',
   },
-
   socialIconsRow: {
     flexDirection: 'row',
     gap: 12,
@@ -1513,7 +1470,6 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-
   footerBottom: {
     paddingTop: 24,
     borderTopWidth: 1,
