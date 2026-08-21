@@ -43,7 +43,12 @@ import {
   Search,
 } from 'lucide-react-native';
 import { useAdminConfig } from '../context/AdminConfigContext';
-import { resolvePhotographerProfile, fetchAllEvents, fetchPhotos } from '../utils/api';
+import {
+  resolvePhotographerProfile,
+  fetchAllEvents,
+  fetchPhotos,
+  fetchPhotographersForEvent,
+} from '../utils/api';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import BrandLogo from '../components/BrandLogo';
 
@@ -135,7 +140,7 @@ export default function AdminPanel() {
     }
   };
 
-  // Quando o evento selecionado muda, analisa os fotógrafos presentes naquele evento
+  // Quando o evento selecionado muda, analisa e busca TODOS os fotógrafos presentes no evento
   useEffect(() => {
     if (selectedEventId) {
       loadPhotographersForSelectedEvent(selectedEventId);
@@ -145,21 +150,21 @@ export default function AdminPanel() {
   const loadPhotographersForSelectedEvent = async (evId) => {
     setLoadingEventDetails(true);
     try {
-      // Coleta os fotógrafos cadastrados
-      const registered = config.photographers || [];
+      // 1. Busca todos os fotógrafos presentes no evento (detectados nas fotos + cadastrados)
+      const allFound = await fetchPhotographersForEvent(evId, config.photographers || []);
       const currentRules = eventRules[evId] || {};
 
-      // Mapeia os fotógrafos com a regra atual do evento
-      const mapped = registered.map((p, idx) => {
+      // 2. Mapeia com a regra ativa de ordem e ocultação
+      const mapped = allFound.map((p, idx) => {
         const rule = currentRules[p.id] || { isHidden: false, order: idx + 1 };
         return {
           ...p,
-          isHidden: rule.isHidden,
+          isHidden: Boolean(rule.isHidden),
           order: rule.order || idx + 1,
         };
       });
 
-      // Ordena de acordo com o `order`
+      // 3. Ordena de acordo com o `order`
       mapped.sort((a, b) => a.order - b.order);
       setEventPhotogsList(mapped);
     } catch (err) {
@@ -434,7 +439,7 @@ export default function AdminPanel() {
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Configuração de Fotos por Evento</Text>
               <Text style={styles.sectionDesc}>
-                Escolha um evento para definir a **ordem em que as fotos de cada fotógrafo serão mostradas** ou **ocultar completamente as fotos** de um determinado fotógrafo neste evento específico.
+                O sistema lista automaticamente **todos os fotógrafos com fotos no evento** (incluindo fotógrafos cadastrados e detectados). Você pode definir a **ordem de exibição das fotos** ou **ocultar completamente as fotos** de qualquer fotógrafo neste evento específico.
               </Text>
             </View>
 
@@ -464,7 +469,7 @@ export default function AdminPanel() {
                     Nenhum evento encontrado.
                   </Text>
                 ) : (
-                  filteredEventsForSelect.slice(0, 15).map((ev) => {
+                  filteredEventsForSelect.slice(0, 20).map((ev) => {
                     const isSelected = ev.id === selectedEventId;
                     return (
                       <TouchableOpacity
@@ -499,7 +504,7 @@ export default function AdminPanel() {
                 <View style={styles.cardBoxHeaderBetween}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardBoxTitle}>
-                      2. Ordem e Visibilidade dos Fotógrafos no Evento:
+                      2. Fotógrafos com Fotos neste Evento ({eventPhotogsList.length}):
                     </Text>
                     <Text style={styles.selectedEventNameHighlight}>
                       "{selectedEventObj.name}"
@@ -515,7 +520,16 @@ export default function AdminPanel() {
                 </View>
 
                 {loadingEventDetails ? (
-                  <ActivityIndicator size="small" color="#006BD6" style={{ marginVertical: 20 }} />
+                  <View style={{ padding: 24, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#006BD6" />
+                    <Text style={{ fontSize: 12, color: '#64748B', marginTop: 8 }}>
+                      Identificando fotógrafos presentes nas fotos do evento...
+                    </Text>
+                  </View>
+                ) : eventPhotogsList.length === 0 ? (
+                  <Text style={{ padding: 12, fontSize: 13, color: '#64748B', textAlign: 'center' }}>
+                    Nenhum fotógrafo identificado para este evento.
+                  </Text>
                 ) : (
                   <View style={styles.photogOrderList}>
                     {eventPhotogsList.map((p, idx) => (
@@ -535,7 +549,7 @@ export default function AdminPanel() {
                         <Image source={{ uri: p.avatar }} style={styles.photogAvatarSmall} />
 
                         <View style={{ flex: 1, gap: 2 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <Text style={[styles.photogOrderName, p.isHidden && { color: '#94A3B8', textDecorationLine: 'line-through' }]}>
                               {p.name}
                             </Text>
@@ -544,9 +558,14 @@ export default function AdminPanel() {
                                 <Text style={styles.primaryMiniBadgeText}>PRINCIPAL</Text>
                               </View>
                             )}
+                            {p.detectedInEvent && (
+                              <View style={styles.detectedMiniBadge}>
+                                <Text style={styles.detectedMiniBadgeText}>DETECTADO NO EVENTO</Text>
+                              </View>
+                            )}
                           </View>
                           <Text style={styles.photogOrderSub}>
-                            {p.isHidden ? '❌ Fotos Ocultas neste evento' : '✅ Fotos exibidas na galeria'}
+                            {p.isHidden ? '❌ Fotos Ocultas na galeria deste evento' : '✅ Fotos exibidas na galeria deste evento'}
                           </Text>
                         </View>
 
@@ -587,7 +606,7 @@ export default function AdminPanel() {
                               p.isHidden ? { color: '#DC2626' } : { color: '#059669' },
                             ]}
                           >
-                            {p.isHidden ? 'Oculto' : 'Exibindo'}
+                            {p.isHidden ? 'Ocultar' : 'Exibindo'}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -1571,6 +1590,19 @@ const styles = StyleSheet.create({
     color: '#006BD6',
     fontSize: 9,
     fontWeight: '800',
+  },
+  detectedMiniBadge: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  detectedMiniBadgeText: {
+    color: '#475569',
+    fontSize: 9,
+    fontWeight: '700',
   },
   photogOrderSub: {
     fontSize: 11,
