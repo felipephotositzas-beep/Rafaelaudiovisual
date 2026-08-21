@@ -992,16 +992,25 @@ export default function AdminPanel() {
             <View style={styles.cardBox}>
               <Text style={styles.cardBoxTitle}>Foto Principal do Hero (Atleta / Capa)</Text>
               <View style={styles.formGroup}>
-                <Text style={styles.label}>URL da Imagem do Hero</Text>
-                <TextInput
-                  style={styles.input}
-                  value={bannerForm.heroMainImage}
-                  onChangeText={(v) =>
-                    setBannerForm((prev) => ({ ...prev, heroMainImage: v }))
-                  }
-                  placeholder="URL da foto principal..."
-                  placeholderTextColor="#94A3B8"
-                />
+                <Text style={styles.label}>Imagem do Hero</Text>
+                <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8 }}
+                    onChange={async (e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const file = e.target.files[0];
+                        const url = await uploadImageToServer(file);
+                        if (url) {
+                          setBannerForm((prev) => ({ ...prev, heroMainImage: url }));
+                        } else {
+                          alert('Erro ao fazer upload da imagem.');
+                        }
+                      }
+                    }}
+                  />
+                </View>
               </View>
 
               {bannerForm.heroMainImage ? (
