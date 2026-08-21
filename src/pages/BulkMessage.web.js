@@ -66,13 +66,13 @@ function fmtMoney(value) {
 
 export default function BulkMessage() {
 
-  const { isAuthenticated, login } = useAdminConfig();
+  const { isAuthenticated, loginAdmin } = useAdminConfig();
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
 
   const handleLogin = async () => {
-    const success = await login(emailInput, passwordInput);
+    const success = await loginAdmin(emailInput, passwordInput);
     if (!success) setLoginError('Credenciais inválidas.');
   };
   const navigation = useNavigation();
