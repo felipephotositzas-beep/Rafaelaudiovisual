@@ -166,7 +166,7 @@ app.get('/api/analytics/summary', async (req, res) => {
 // Obter configurações da Meta API
 app.get('/api/meta/config', async (req, res) => {
   try {
-    const result = await db.query('SELECT phone_number_id, waba_id, api_version, (access_token != '' AND access_token IS NOT NULL) AS has_token FROM meta_api_config WHERE id = 1');
+    const result = await db.query('SELECT phone_number_id, waba_id, api_version, (access_token IS NOT NULL AND LENGTH(access_token) > 5) AS has_token FROM meta_api_config WHERE id = 1');
     res.json({ config: result.rows[0] || {} });
   } catch (err) {
     console.error('Erro ao buscar config Meta:', err);
