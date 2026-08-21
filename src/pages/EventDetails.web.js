@@ -236,22 +236,28 @@ export default function EventDetails() {
   const [isPrivateEvent, setIsPrivateEvent] = useState(false);
   const photosCacheRef = useRef({});
 
-  const { eventRules } = useAdminConfig();
+  const { eventRules, isLoaded: adminConfigLoaded } = useAdminConfig();
 
   const { addToCart, removeFromCart, isInCart, initializeCartForEvent } =
     useCart();
   const discountTiers = getProgressiveDiscountTiers(eventData);
 
-  // Determina se há um fotógrafo específico ativo/selecionado com prioridade 1 para buscar direto da API
+  // Determina os fotógrafos visíveis para filtrar direto pela API
   const getActivePhotographerFilter = (eventId) => {
-    if (!eventId) return null;
+    if (!eventId || !adminConfigLoaded) return null;
     const rules = eventRules[eventId] || {};
-    const visiblePhotogIds = Object.keys(rules).filter((pid) => !rules[pid]?.isHidden);
-    
-    // Se o usuário ocultou os outros e deixou apenas 1 fotógrafo visível, busca direto com photographer_id dele!
-    if (visiblePhotogIds.length === 1) {
-      return visiblePhotogIds[0];
-    }
+    const allPhotogIds = Object.keys(rules);
+    // Se não há regras configuradas para este evento, sem filtro
+    if (allPhotogIds.length === 0) return null;
+
+    const hiddenIds = allPhotogIds.filter((pid) => rules[pid]?.isHidden);
+    // Se ninguém está oculto, sem filtro
+    if (hiddenIds.length === 0) return null;
+
+    const visibleIds = allPhotogIds.filter((pid) => !rules[pid]?.isHidden);
+    // Se 1 ou mais fotógrafos visíveis, retorna array para fetch multi
+    if (visibleIds.length >= 1) return visibleIds;
+
     return null;
   };
 
@@ -293,14 +299,52 @@ export default function EventDetails() {
     return visiblePhotos;
   };
 
+  // Helper: busca fotos de múltiplos fotógrafos em paralelo e mescla resultados
+  const fetchPhotosForVisiblePhotographers = async (eventId, pageNumber, mediaType, photogFilter) => {
+    // photogFilter é array de IDs visíveis ou null (sem filtro)
+    if (!photogFilter || photogFilter.length === 0) {
+      // Sem filtro: busca normal
+      return fetchPhotos(eventId, pageNumber, mediaType);
+    }
+
+    // Busca em paralelo para cada fotógrafo visível
+    const responses = await Promise.all(
+      photogFilter.map((pid) => fetchPhotos(eventId, pageNumber, mediaType, pid))
+    );
+
+    let allResults = [];
+    let totalCount = 0;
+    let maxPages = 1;
+
+    for (const res of responses) {
+      if (res.ok) {
+        const data = await res.json();
+        allResults = allResults.concat(data.results || []);
+        totalCount += (data.count || 0);
+        maxPages = Math.max(maxPages, data.num_pages || 1);
+      }
+    }
+
+    // Retorna um objeto simulando a resposta da API
+    return {
+      ok: true,
+      json: async () => ({
+        results: allResults,
+        count: totalCount,
+        num_pages: maxPages,
+      }),
+    };
+  };
+
   // Prefetch silencioso da próxima página em background
   const prefetchNextPage = async (nextPage, mediaType) => {
     if (!id || id === 'undefined') return;
     const photogFilter = getActivePhotographerFilter(id);
-    const cacheKey = `${id}_${mediaType}_${photogFilter || 'all'}_${nextPage}`;
+    const filterKey = Array.isArray(photogFilter) ? photogFilter.join(',') : 'all';
+    const cacheKey = `${id}_${mediaType}_${filterKey}_${nextPage}`;
     if (photosCacheRef.current[cacheKey]) return;
     try {
-      const res = await fetchPhotos(id, nextPage, mediaType, photogFilter);
+      const res = await fetchPhotosForVisiblePhotographers(id, nextPage, mediaType, photogFilter);
       if (res.ok) {
         const data = await res.json();
         let loaded = processPhotosByEventRules(data.results || [], id);
@@ -343,8 +387,11 @@ export default function EventDetails() {
   }, [id, initialId, initialSlug]);
 
   useEffect(() => {
+    if (!adminConfigLoaded) return; // Espera eventRules carregar do storage
     if (id && id !== 'undefined') {
       initializeCartForEvent(id);
+      // Limpa cache ao recarregar (regras podem ter mudado)
+      photosCacheRef.current = {};
       const slug = eventData?.slug || eventParam?.slug || initialSlug;
       if (slug) {
         fetchEventPrivacy(slug).then((isPriv) => {
@@ -362,7 +409,7 @@ export default function EventDetails() {
       loadMediaCount('video');
       loadMediaCount('photo');
     }
-  }, [id, eventData?.slug, eventParam?.slug, initialSlug]);
+  }, [id, eventData?.slug, eventParam?.slug, initialSlug, adminConfigLoaded]);
 
   useEffect(() => {
     if (eventParam || !id || id === 'undefined') return;
@@ -444,7 +491,7 @@ export default function EventDetails() {
     if (!id || id === 'undefined') return;
     try {
       const photogFilter = getActivePhotographerFilter(id);
-      const res = await fetchPhotos(id, 1, mediaType, photogFilter);
+      const res = await fetchPhotosForVisiblePhotographers(id, 1, mediaType, photogFilter);
       if (!res.ok) return;
       const data = await res.json();
       setMediaCounts((current) => ({
@@ -463,7 +510,8 @@ export default function EventDetails() {
     }
 
     const photogFilter = getActivePhotographerFilter(id);
-    const cacheKey = `${id}_${mediaType}_${photogFilter || 'all'}_${pageNumber}`;
+    const filterKey = Array.isArray(photogFilter) ? photogFilter.join(',') : 'all';
+    const cacheKey = `${id}_${mediaType}_${filterKey}_${pageNumber}`;
     const cached = photosCacheRef.current[cacheKey];
 
     // 🚀 Se estiver em cache, carrega INSTANTANEAMENTE (0 ms)!
@@ -504,7 +552,7 @@ export default function EventDetails() {
     }
 
     try {
-      const res = await fetchPhotos(id, pageNumber, mediaType, photogFilter);
+      const res = await fetchPhotosForVisiblePhotographers(id, pageNumber, mediaType, photogFilter);
       if (res.ok) {
         const data = await res.json();
         let loadedPhotos = processPhotosByEventRules(data.results || [], id);
