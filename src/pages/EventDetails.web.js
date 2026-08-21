@@ -268,28 +268,61 @@ export default function EventDetails() {
     return null;
   };
 
+  const isOwnerPhoto = (p) => {
+    if (!p) return false;
+    const primary = (config?.photographers || []).find((photog) => photog.isPrimary) || {
+      id: DEFAULT_PHOTOGRAPHER_ID,
+      name: 'Rafael Publicado',
+      slug: 'rafael-costa',
+    };
+    const primaryId = String(primary.id || DEFAULT_PHOTOGRAPHER_ID || '').trim().toLowerCase();
+    const primarySlug = String(primary.slug || DEFAULT_PHOTOGRAPHER_SLUG || 'rafael-costa').trim().toLowerCase();
+    const primaryName = String(primary.name || 'Rafael').trim().toLowerCase();
+
+    const photogId = String(p.photographer || p.photographer_id || p.owner || p.author || '').trim().toLowerCase();
+    const photogName = String(p.photographer_name || p.owner_name || p.author_name || '').trim().toLowerCase();
+    const photogSlug = String(p.photographer_slug || '').trim().toLowerCase();
+
+    // 1. Se tem o nome do fotografo (ex: "Ramon Santana", "Junior Medrado")
+    if (photogName) {
+      return (
+        photogName.includes('rafael') ||
+        photogName.includes('publicado') ||
+        (primaryName && photogName.includes(primaryName))
+      );
+    }
+
+    // 2. Se tem o slug do fotografo
+    if (photogSlug) {
+      return (
+        photogSlug.includes('rafael') ||
+        photogSlug.includes('publicado') ||
+        (primarySlug && photogSlug.includes(primarySlug))
+      );
+    }
+
+    // 3. Se tem ID do fotografo
+    if (photogId) {
+      return (
+        (primaryId && photogId === primaryId) ||
+        (DEFAULT_PHOTOGRAPHER_ID && photogId === DEFAULT_PHOTOGRAPHER_ID.toLowerCase())
+      );
+    }
+
+    return true;
+  };
+
   // Helper para filtrar e ordenar fotos de acordo com as regras ativas do evento
   const processPhotosByEventRules = (loadedPhotos, eventId) => {
     // 0. Modo exclusivo: apenas fotos do dono do site (Rafael Publicado)
     if (config?.eventsConfig?.onlyOwnerPhotos) {
-      const primary = (config.photographers || []).find((p) => p.isPrimary) || { id: DEFAULT_PHOTOGRAPHER_ID };
-      const primaryId = primary.id || DEFAULT_PHOTOGRAPHER_ID;
-      return (loadedPhotos || []).filter((p) => {
-        const photogId = p.photographer || p.photographer_id || p.owner;
-        const photogName = (p.photographer_name || '').toLowerCase();
-        return (
-          photogId === primaryId ||
-          photogId === DEFAULT_PHOTOGRAPHER_ID ||
-          photogName.includes('rafael') ||
-          photogName.includes('publicado')
-        );
-      });
+      return (loadedPhotos || []).filter(isOwnerPhoto);
     }
 
     const rules = eventRules[eventId] || {};
 
     // 1. Filtra fotos de fotógrafos marcados como ocultos
-    const visiblePhotos = loadedPhotos.filter((p) => {
+    const visiblePhotos = (loadedPhotos || []).filter((p) => {
       const photogId = p.photographer || p.photographer_id || p.owner;
       if (photogId && rules[photogId]?.isHidden) {
         return false;
@@ -308,12 +341,8 @@ export default function EventDetails() {
       if (orderA !== orderB) return orderA - orderB;
 
       // Desempate: Rafael Publicado primeiro
-      const aIsRafael =
-        photogA === DEFAULT_PHOTOGRAPHER_ID ||
-        (a.photographer_name && a.photographer_name.toLowerCase().includes('rafael'));
-      const bIsRafael =
-        photogB === DEFAULT_PHOTOGRAPHER_ID ||
-        (b.photographer_name && b.photographer_name.toLowerCase().includes('rafael'));
+      const aIsRafael = isOwnerPhoto(a);
+      const bIsRafael = isOwnerPhoto(b);
       if (aIsRafael && !bIsRafael) return -1;
       if (!aIsRafael && bIsRafael) return 1;
       return 0;
@@ -432,7 +461,7 @@ export default function EventDetails() {
       loadMediaCount('video');
       loadMediaCount('photo');
     }
-  }, [id, eventData?.slug, eventParam?.slug, initialSlug, adminConfigLoaded]);
+  }, [id, eventData?.slug, eventParam?.slug, initialSlug, adminConfigLoaded, config?.eventsConfig?.onlyOwnerPhotos]);
 
   useEffect(() => {
     if (eventParam || !id || id === 'undefined') return;
@@ -632,7 +661,8 @@ export default function EventDetails() {
       if (res.ok) {
         const data = await res.json();
         const results = Array.isArray(data) ? data : data.results || [];
-        setPhotos(results);
+        const filteredResults = processPhotosByEventRules(results, id);
+        setPhotos(filteredResults);
         setIsFaceSearchActive(true);
         setHasMore(false);
         if (results.length === 0) {
