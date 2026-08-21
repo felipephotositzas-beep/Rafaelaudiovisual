@@ -140,7 +140,7 @@ export default function Home() {
     <View>
       <View style={styles.heroSection}>
         <View style={styles.heroBadge}>
-          <Sparkles size={11} color="#009DFF" />
+          <Sparkles size={11} color="var(--primary-color)" />
           <Text style={styles.heroBadgeText}>AUDIOVISUAL PREMIUM</Text>
         </View>
         <Text style={styles.heroTitle}>Momentos em movimento,</Text>
@@ -151,7 +151,7 @@ export default function Home() {
 
         <View style={styles.searchBar}>
           <View style={styles.searchInputWrapper}>
-            <Search color="#009DFF" size={18} />
+            <Search color="var(--primary-color)" size={18} />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar evento por nome ou cidade..."
@@ -227,7 +227,7 @@ export default function Home() {
       {loading && (
         <ActivityIndicator
           size="large"
-          color="#006BD6"
+          color="var(--primary-color)"
           style={{ marginTop: 40 }}
         />
       )}
@@ -252,7 +252,7 @@ export default function Home() {
         onEndReachedThreshold={0.3}
         ListFooterComponent={
           loadingMore ? (
-            <ActivityIndicator color="#006BD6" style={{ padding: 20 }} />
+            <ActivityIndicator color="var(--primary-color)" style={{ padding: 20 }} />
           ) : null
         }
       />
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     fontSize: 10,
     fontWeight: FontWeights.extrabold,
-    color: '#009DFF',
+    color: "var(--primary-color)",
     letterSpacing: 1,
   },
   heroTitle: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 32,
     fontWeight: FontWeights.extrabold,
-    color: '#009DFF',
+    color: "var(--primary-color)",
     marginBottom: Spacing.two,
   },
   heroSubtitle: {
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     color: '#F7F9FC',
   },
   btnSearch: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.four,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   categoryChipActive: {
     backgroundColor: 'rgba(0, 107, 214, 0.2)',
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
   },
   categoryChipText: {
     fontSize: 12,

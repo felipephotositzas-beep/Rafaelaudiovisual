@@ -442,11 +442,11 @@ export default function Checkout() {
                     style={styles.btnBank}
                     onPress={handleOpenBank}
                   >
-                    <Landmark color="#009DFF" size={16} />
+                    <Landmark color="var(--primary-color)" size={16} />
                     <Text style={styles.btnBankText}>Abrir app do banco</Text>
                   </TouchableOpacity>
                   <View style={styles.pixWaiting}>
-                    <ActivityIndicator color="#009DFF" size="small" />
+                    <ActivityIndicator color="var(--primary-color)" size="small" />
                     <Text style={styles.pixWaitingText}>
                       Aguardando confirmação bancária...
                     </Text>
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   btnPrimary: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     padding: Spacing.four,
     borderRadius: Radius.md,
     alignItems: 'center',
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 157, 255, 0.35)',
     backgroundColor: 'rgba(0, 107, 214, 0.12)',
   },
-  btnBankText: { color: '#009DFF', fontSize: 13, fontWeight: FontWeights.bold },
+  btnBankText: { color: "var(--primary-color)", fontSize: 13, fontWeight: FontWeights.bold },
   btnDisabled: { opacity: 0.5 },
   btnText: { color: '#FFFFFF', fontWeight: FontWeights.bold, fontSize: 14 },
   pixCodeBox: {

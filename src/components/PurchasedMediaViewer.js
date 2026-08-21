@@ -53,7 +53,7 @@ function PurchasedVideo({ media, width, height }) {
       />
       {(status === 'idle' || status === 'loading') && (
         <View style={styles.loadingState} pointerEvents="none">
-          <ActivityIndicator color="#009DFF" size="large" />
+          <ActivityIndicator color="var(--primary-color)" size="large" />
           <Text style={styles.stateText}>Carregando vídeo...</Text>
         </View>
       )}
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingHorizontal: Spacing.four,
     borderRadius: Radius.md,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
   },
   retryText: { color: '#fff', fontWeight: FontWeights.bold },
   navButton: {
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.two,
     borderRadius: Radius.md,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     boxShadow: '0 4px 16px rgba(0, 107, 214, 0.4)',
   },
   downloadText: { color: '#FFFFFF', fontSize: 14, fontWeight: FontWeights.bold },

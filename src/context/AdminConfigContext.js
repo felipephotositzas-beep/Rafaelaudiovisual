@@ -151,7 +151,7 @@ const API_URL = 'http://187.127.62.60:3001/api';
 
         // Aplica as configurações
         if (parsedConfig) {
-          setConfig({
+          const newConfig = {
             ...DEFAULT_CONFIG,
             ...parsedConfig,
             branding: { ...DEFAULT_CONFIG.branding, ...(parsedConfig.branding || {}) },
@@ -162,7 +162,13 @@ const API_URL = 'http://187.127.62.60:3001/api';
             photographers: Array.isArray(parsedConfig.photographers) && parsedConfig.photographers.length > 0
               ? parsedConfig.photographers
               : DEFAULT_CONFIG.photographers,
-          });
+          };
+          setConfig(newConfig);
+          
+          if (typeof document !== 'undefined') {
+            document.documentElement.style.setProperty('--primary-color', newConfig.theme?.primaryColor || 'var(--primary-color)');
+            document.documentElement.style.setProperty('--primary-deep', newConfig.theme?.primaryDeep || '#063A78');
+          }
         }
         if (parsedRules) {
           setEventRules(parsedRules);
@@ -191,6 +197,11 @@ const API_URL = 'http://187.127.62.60:3001/api';
           : { ...config, ...newConfigOrUpdater };
       
       setConfig(updated);
+
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--primary-color', updated.theme?.primaryColor || 'var(--primary-color)');
+        document.documentElement.style.setProperty('--primary-deep', updated.theme?.primaryDeep || '#063A78');
+      }
       
       // Salva no backend
       try {

@@ -126,7 +126,7 @@ function VideoMedia({ media, containerWidth, containerHeight }) {
             />
           )}
           <View style={styles.videoLoadingScrim} />
-          <ActivityIndicator color="#006BD6" size="large" />
+          <ActivityIndicator color="var(--primary-color)" size="large" />
           <Text style={styles.videoLoadingText}>Carregando vídeo...</Text>
         </View>
       )}
@@ -274,7 +274,7 @@ export default function MediaViewer({
               {currentMedia.is_video ? (
                 <VideoIcon size={12} color="#A855F7" />
               ) : (
-                <Camera size={12} color="#009DFF" />
+                <Camera size={12} color="var(--primary-color)" />
               )}
               <Text
                 style={[
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(168, 85, 247, 0.35)',
   },
   mediaBadgeText: {
-    color: '#009DFF',
+    color: "var(--primary-color)",
     fontSize: 12,
     fontWeight: FontWeights.bold,
   },
@@ -521,13 +521,13 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
   },
   photographerAvatarFallback: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     borderRadius: Radius.full,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     marginTop: 6,
   },
   retryButtonText: {
@@ -687,7 +687,7 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   buyBtn: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingVertical: 13,
     paddingHorizontal: 28,
     borderRadius: Radius.full,

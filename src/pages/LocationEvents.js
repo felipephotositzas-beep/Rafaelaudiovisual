@@ -50,13 +50,13 @@ export default function LocationEvents() {
         <Text style={styles.eyebrow}>EVENTOS POR LOCAL</Text>
         <Text style={styles.title}>{location.name}</Text>
         <View style={styles.cityRow}>
-          <MapPin size={15} color="#009DFF" />
+          <MapPin size={15} color="var(--primary-color)" />
           <Text style={styles.city}>{location.city}</Text>
         </View>
         <Text style={styles.description}>Veja todos os eventos e coberturas fotográficas disponíveis neste local.</Text>
       </View>
       <Text style={styles.sectionTitle}>Eventos em {location.name}</Text>
-      {loading && <ActivityIndicator size="large" color="#006BD6" style={{ marginTop: 20 }} />}
+      {loading && <ActivityIndicator size="large" color="var(--primary-color)" style={{ marginTop: 20 }} />}
     </View>
   );
 
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontSize: 11,
-    color: '#009DFF',
+    color: "var(--primary-color)",
     fontWeight: FontWeights.extrabold,
     letterSpacing: 1,
     marginBottom: Spacing.one,

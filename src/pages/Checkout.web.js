@@ -416,15 +416,15 @@ export default function Checkout() {
         ]}
       >
         <View style={styles.trustBarItem}>
-          <ShieldCheck size={15} color="#006BD6" />
+          <ShieldCheck size={15} color="var(--primary-color)" />
           <Text style={styles.trustBarText}>Pagamento 100% Seguro</Text>
         </View>
         <View style={styles.trustBarItem}>
-          <Zap size={15} color="#006BD6" />
+          <Zap size={15} color="var(--primary-color)" />
           <Text style={styles.trustBarText}>Liberação Imediata</Text>
         </View>
         <View style={styles.trustBarItem}>
-          <Download size={15} color="#006BD6" />
+          <Download size={15} color="var(--primary-color)" />
           <Text style={styles.trustBarText}>Alta Resolução Original</Text>
         </View>
       </View>
@@ -786,7 +786,7 @@ export default function Checkout() {
               {/* STEP: Card processing */}
               {step === 'cardProcessing' && (
                 <View style={[styles.card, isMobile && styles.cardMobile]}>
-                  <ActivityIndicator color="#006BD6" size="large" />
+                  <ActivityIndicator color="var(--primary-color)" size="large" />
                   <Text style={[styles.cardTitle, { textAlign: 'center', marginTop: 16 }]}>
                     Confirmando pagamento
                   </Text>
@@ -861,14 +861,14 @@ export default function Checkout() {
                         onPress={handleOpenBank}
                         activeOpacity={0.85}
                       >
-                        <Landmark color="#006BD6" size={17} />
+                        <Landmark color="var(--primary-color)" size={17} />
                         <Text style={styles.btnBankText}>
                           Copiar e abrir app do banco
                         </Text>
                       </TouchableOpacity>
 
                       <View style={styles.pixWaiting}>
-                        <ActivityIndicator color="#006BD6" size="small" />
+                        <ActivityIndicator color="var(--primary-color)" size="small" />
                         <Text style={styles.pixWaitingText}>
                           Aguardando confirmação bancária em tempo real...
                         </Text>
@@ -891,7 +891,7 @@ export default function Checkout() {
           >
             <View style={[styles.summaryCard, isMobile && styles.summaryCardMobile]}>
               <View style={styles.summaryHeader}>
-                <ShoppingBag size={18} color="#006BD6" />
+                <ShoppingBag size={18} color="var(--primary-color)" />
                 <Text style={styles.summaryTitle}>Resumo da Compra</Text>
                 <View style={styles.summaryBadge}>
                   <Text style={styles.summaryBadgeText}>{cartItems.length}</Text>
@@ -957,7 +957,7 @@ export default function Checkout() {
               {appliedCoupon ? (
                 <View style={styles.couponApplied}>
                   <View style={styles.couponBadgeRow}>
-                    <Ticket size={15} color="#006BD6" />
+                    <Ticket size={15} color="var(--primary-color)" />
                     <Text style={styles.couponBadge}>
                       {appliedCoupon.name || 'Cupom Ativo'}
                     </Text>
@@ -1015,7 +1015,7 @@ export default function Checkout() {
 
               {/* Security info box */}
               <View style={styles.summaryTrustBox}>
-                <Lock size={14} color="#006BD6" />
+                <Lock size={14} color="var(--primary-color)" />
                 <Text style={styles.summaryTrustText}>
                   Ambiente criptografado com certificação SSL e liberação imediata.
                 </Text>
@@ -1122,9 +1122,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepDotActive: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     borderWidth: 1,
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
   },
   stepLine: {
     width: 32,
@@ -1135,7 +1135,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.two,
     fontSize: 13,
     fontWeight: FontWeights.bold,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
   },
 
   // Cards
@@ -1176,7 +1176,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   changeLink: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: FontWeights.semibold,
     fontSize: 13,
   },
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
   },
   cancelEditLink: {
     alignSelf: 'flex-end',
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 12,
     fontWeight: FontWeights.semibold,
   },
@@ -1268,7 +1268,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   paymentMethodCardActive: {
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
     backgroundColor: '#EFF6FF',
   },
   pmRadioRow: {
@@ -1286,13 +1286,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioCircleActive: {
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
   },
   radioInner: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
   },
   pmTitle: {
     fontSize: 13,
@@ -1300,7 +1300,7 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   pmTitleActive: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
   },
   pmSubtitle: {
     fontSize: 10,
@@ -1373,7 +1373,7 @@ const styles = StyleSheet.create({
 
   // Buttons
   btnPrimary: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingVertical: 14,
     borderRadius: Radius.md,
     alignItems: 'center',
@@ -1399,7 +1399,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EFF6FF',
   },
   btnBankText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 13,
     fontWeight: FontWeights.bold,
   },
@@ -1421,7 +1421,7 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.two,
   },
   btnCouponText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: FontWeights.bold,
     fontSize: 13,
   },
@@ -1453,7 +1453,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryBadge: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     width: 22,
     height: 22,
     borderRadius: Radius.full,
@@ -1544,7 +1544,7 @@ const styles = StyleSheet.create({
   couponBadge: {
     fontSize: 13,
     fontWeight: FontWeights.bold,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
   },
   couponRemove: {
     color: '#EF4444',
@@ -1566,7 +1566,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 22,
     fontWeight: FontWeights.extrabold,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
   },
   summaryTrustBox: {
     flexDirection: 'row',

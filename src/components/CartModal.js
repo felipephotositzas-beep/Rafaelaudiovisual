@@ -62,7 +62,7 @@ export default function CartModal({ visible, onClose, onCheckout }) {
           <View style={s.header}>
             <View style={s.headerLeft}>
               <View style={s.cartIconCircle}>
-                <ShoppingCart size={18} color="#009DFF" />
+                <ShoppingCart size={18} color="var(--primary-color)" />
               </View>
               <Text style={s.headerTitle}>Seu Carrinho</Text>
               {cartItems.length > 0 && (
@@ -228,7 +228,7 @@ const s = StyleSheet.create({
     color: '#F7F9FC',
   },
   headerBadge: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     width: 22,
     height: 22,
     borderRadius: Radius.full,
@@ -312,7 +312,7 @@ const s = StyleSheet.create({
   cartPrice: {
     fontSize: 15,
     fontWeight: FontWeights.extrabold,
-    color: '#009DFF',
+    color: "var(--primary-color)",
   },
   removeBtn: {
     padding: Spacing.two,
@@ -364,7 +364,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingVertical: Spacing.four,
     borderRadius: Radius.md,
   },

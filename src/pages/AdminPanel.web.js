@@ -106,7 +106,7 @@ export default function AdminPanel() {
 
   // Preset Palettes
   const PRESET_PALETTES = [
-    { name: 'Azul Top Fotos (Padrão)', primary: '#006BD6', deep: '#063A78', hover: '#007BF5' },
+    { name: 'Azul Top Fotos (Padrão)', primary: 'var(--primary-color)', deep: "var(--primary-deep)", hover: '#007BF5' },
     { name: 'Dourado / Premium Gold', primary: '#D97706', deep: '#78350F', hover: '#B45309' },
     { name: 'Verde Esmeralda', primary: '#059669', deep: '#064E3B', hover: '#047857' },
     { name: 'Roxo Neon / Creator', primary: '#7C3AED', deep: '#4C1D95', hover: '#6D28D9' },
@@ -308,7 +308,7 @@ export default function AdminPanel() {
           <View style={styles.loginHeader}>
             <BrandLogo size="medium" />
             <View style={styles.adminBadge}>
-              <ShieldCheck size={14} color="#006BD6" />
+              <ShieldCheck size={14} color="var(--primary-color)" />
               <Text style={styles.adminBadgeText}>PAINEL ADMINISTRATIVO</Text>
             </View>
             <Text style={styles.loginTitle}>Acesso Restrito</Text>
@@ -372,7 +372,7 @@ export default function AdminPanel() {
               onPress={() => navigation.navigate('Home')}
               activeOpacity={0.8}
             >
-              <ArrowLeft size={16} color="#006BD6" />
+              <ArrowLeft size={16} color="var(--primary-color)" />
               {!isMobile && <Text style={styles.btnBackStoreText}>Ver Loja</Text>}
             </TouchableOpacity>
             <BrandLogo size="small" />
@@ -427,7 +427,7 @@ export default function AdminPanel() {
               >
                 <Icon
                   size={16}
-                  color={isActive ? '#006BD6' : '#64748B'}
+                  color={isActive ? 'var(--primary-color)' : '#64748B'}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
                 <Text style={[styles.tabItemText, isActive && styles.tabItemTextActive]}>
@@ -471,7 +471,7 @@ export default function AdminPanel() {
               <ScrollView style={styles.eventPickerList} nestedScrollEnabled>
                 {loadingEventsList ? (
                   <View style={{ padding: 20, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#006BD6" />
+                    <ActivityIndicator size="small" color="var(--primary-color)" />
                     <Text style={{ fontSize: 12, color: '#64748B', marginTop: 6 }}>Carregando eventos...</Text>
                   </View>
                 ) : filteredEventsForSelect.length === 0 ? (
@@ -500,7 +500,7 @@ export default function AdminPanel() {
                             {ev.city || 'Cidade não informada'} • ID: {ev.id}
                           </Text>
                         </View>
-                        {isSelected && <CheckCircle2 size={16} color="#006BD6" />}
+                        {isSelected && <CheckCircle2 size={16} color="var(--primary-color)" />}
                       </TouchableOpacity>
                     );
                   })
@@ -526,14 +526,14 @@ export default function AdminPanel() {
                       onPress={() => loadPhotographersForSelectedEvent(selectedEventObj.id)}
                       activeOpacity={0.8}
                     >
-                      <RefreshCw size={13} color="#006BD6" />
+                      <RefreshCw size={13} color="var(--primary-color)" />
                       <Text style={styles.btnOpenGalleryPreviewText}>Re-Escanear</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.btnOpenGalleryPreview}
                       onPress={() => navigation.navigate('EventDetails', { id: selectedEventObj.id, event: selectedEventObj })}
                     >
-                      <ExternalLink size={13} color="#006BD6" />
+                      <ExternalLink size={13} color="var(--primary-color)" />
                       <Text style={styles.btnOpenGalleryPreviewText}>Ver Galeria</Text>
                     </TouchableOpacity>
                   </View>
@@ -541,7 +541,7 @@ export default function AdminPanel() {
 
                 {loadingEventDetails ? (
                   <View style={{ padding: 24, alignItems: 'center' }}>
-                    <ActivityIndicator size="small" color="#006BD6" />
+                    <ActivityIndicator size="small" color="var(--primary-color)" />
                     <Text style={{ fontSize: 12, color: '#64748B', marginTop: 8 }}>
                       Identificando fotógrafos presentes nas fotos do evento...
                     </Text>
@@ -740,7 +740,7 @@ export default function AdminPanel() {
                           style={styles.linkRow}
                           onPress={() => Platform.OS === 'web' && window.open(p.profileUrl, '_blank')}
                         >
-                          <ExternalLink size={12} color="#006BD6" />
+                          <ExternalLink size={12} color="var(--primary-color)" />
                           <Text style={styles.linkText}>Ver Perfil Top Fotos</Text>
                         </TouchableOpacity>
                       )}
@@ -992,7 +992,7 @@ export default function AdminPanel() {
                       onChangeText={(v) =>
                         setThemeForm((prev) => ({ ...prev, primaryColor: v, primaryHover: v }))
                       }
-                      placeholder="#006BD6"
+                      placeholder="var(--primary-color)"
                     />
                   </View>
                 </View>
@@ -1007,7 +1007,7 @@ export default function AdminPanel() {
                       onChangeText={(v) =>
                         setThemeForm((prev) => ({ ...prev, primaryDeep: v }))
                       }
-                      placeholder="#063A78"
+                      placeholder="var(--primary-deep)"
                     />
                   </View>
                 </View>
@@ -1259,7 +1259,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   adminBadgeText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -1309,7 +1309,7 @@ const styles = StyleSheet.create({
     outlineStyle: 'none',
   },
   btnPrimary: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1364,7 +1364,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   btnBackStoreText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1424,7 +1424,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabItemActive: {
-    borderBottomColor: '#006BD6',
+    borderBottomColor: 'var(--primary-color)',
   },
   tabItemText: {
     fontSize: 13,
@@ -1432,7 +1432,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   tabItemTextActive: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: '700',
   },
 
@@ -1493,7 +1493,7 @@ const styles = StyleSheet.create({
   selectedEventNameHighlight: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     marginTop: 2,
   },
   btnOpenGalleryPreview: {
@@ -1506,7 +1506,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   btnOpenGalleryPreviewText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1550,7 +1550,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   eventPickerTitleActive: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: '700',
   },
   eventPickerSub: {
@@ -1581,7 +1581,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1611,7 +1611,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   primaryMiniBadgeText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 9,
     fontWeight: '800',
   },
@@ -1678,7 +1678,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
   },
   btnActionPrimary: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1760,7 +1760,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   primaryBadgeText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 9,
     fontWeight: '800',
   },
@@ -1776,7 +1776,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 11,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: '600',
   },
   actionsRow: {
@@ -1819,7 +1819,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   btnPrimarySave: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1865,7 +1865,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   presetCardActive: {
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
     backgroundColor: '#EFF6FF',
   },
   presetColorCircle: {

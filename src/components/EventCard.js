@@ -85,11 +85,11 @@ const EventCard = ({ event }) => {
 
         <View style={styles.footer}>
           <View style={styles.aiTag}>
-            <Sparkles size={10} color="#009DFF" />
+            <Sparkles size={10} color="var(--primary-color)" />
             <Text style={styles.aiTagText}>Reconhecimento Facial</Text>
           </View>
           <View style={styles.openIcon}>
-            <ChevronRight size={16} color="#009DFF" />
+            <ChevronRight size={16} color="var(--primary-color)" />
           </View>
         </View>
       </View>
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   },
   aiTagText: {
     fontSize: 10,
-    color: '#009DFF',
+    color: "var(--primary-color)",
     fontWeight: FontWeights.semibold,
   },
   openIcon: {

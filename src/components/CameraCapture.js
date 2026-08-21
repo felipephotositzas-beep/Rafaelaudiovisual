@@ -24,7 +24,7 @@ export default function CameraCapture({ visible, onCapture, onClose }) {
     return (
       <Modal visible={visible} transparent={false} animationType="slide">
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#006BD6" />
+          <ActivityIndicator size="large" color="var(--primary-color)" />
         </View>
       </Modal>
     );
@@ -34,7 +34,7 @@ export default function CameraCapture({ visible, onCapture, onClose }) {
     return (
       <Modal visible={visible} transparent={false} animationType="slide">
         <View style={styles.centerContainer}>
-          <ScanFace size={48} color="#009DFF" style={{ marginBottom: 16 }} />
+          <ScanFace size={48} color="var(--primary-color)" style={{ marginBottom: 16 }} />
           <Text style={styles.message}>Precisamos da sua permissão para usar a câmera e localizar suas fotos.</Text>
           <TouchableOpacity style={styles.btnPrimary} onPress={requestPermission}>
             <Text style={styles.btnText}>Conceder Permissão</Text>
@@ -119,7 +119,7 @@ export default function CameraCapture({ visible, onCapture, onClose }) {
               activeOpacity={0.85}
             >
               <View style={styles.shutterBtnInner}>
-                {loading && <ActivityIndicator color="#006BD6" />}
+                {loading && <ActivityIndicator color="var(--primary-color)" />}
               </View>
             </TouchableOpacity>
           </View>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   btnPrimary: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     padding: Spacing.four,
     borderRadius: Radius.md,
     width: '100%',
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 157, 255, 0.4)',
   },
   faceTargetText: {
-    color: '#009DFF',
+    color: "var(--primary-color)",
     fontSize: 12,
     fontWeight: FontWeights.bold,
   },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#009DFF',
+    borderColor: "var(--primary-color)",
   },
   shutterBtnInner: {
     width: 64,

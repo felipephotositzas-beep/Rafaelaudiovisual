@@ -84,7 +84,7 @@ const EventCard = ({ event }) => {
 
         {/* Fast selfie AI finder pill */}
         <View style={styles.aiPill}>
-          <Sparkles size={11} color="#009DFF" />
+          <Sparkles size={11} color="var(--primary-color)" />
           <Text style={styles.aiPillText}>Busca Facial</Text>
         </View>
       </View>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 2px 12px rgba(0, 0, 0, 0.05)',
   },
   cardHovered: {
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
     transform: 'translateY(-3px)',
     boxShadow: '0 12px 28px rgba(0, 107, 214, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06)',
   },
@@ -205,8 +205,8 @@ const styles = StyleSheet.create({
     height: 8,
     borderTopWidth: 1.5,
     borderLeftWidth: 1.5,
-    borderTopColor: '#006BD6',
-    borderLeftColor: '#006BD6',
+    borderTopColor: 'var(--primary-color)',
+    borderLeftColor: 'var(--primary-color)',
     pointerEvents: 'none',
   },
   viewfinderBR: {
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
     height: 8,
     borderBottomWidth: 1.5,
     borderRightWidth: 1.5,
-    borderBottomColor: '#006BD6',
-    borderRightColor: '#006BD6',
+    borderBottomColor: 'var(--primary-color)',
+    borderRightColor: 'var(--primary-color)',
     pointerEvents: 'none',
   },
 
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   aiPillText: {
     fontSize: 10,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: FontWeights.bold,
   },
 
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     borderColor: BrandColors.primary,
   },
   btnActionText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 13,
     fontWeight: FontWeights.bold,
   },

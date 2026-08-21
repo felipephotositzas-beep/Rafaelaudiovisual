@@ -850,7 +850,7 @@ export default function EventDetails() {
           activeOpacity={0.75}
         >
           {loadingMore ? (
-            <ActivityIndicator size="small" color="#006BD6" style={{ marginRight: 4 }} />
+            <ActivityIndicator size="small" color="var(--primary-color)" style={{ marginRight: 4 }} />
           ) : (
             <Text
               style={[
@@ -882,13 +882,13 @@ export default function EventDetails() {
             onPress={() => navigation.navigate('Home')}
             activeOpacity={0.8}
           >
-            <ArrowLeft size={16} color="#006BD6" />
+            <ArrowLeft size={16} color="var(--primary-color)" />
             <Text style={styles.backBtnText}>Voltar às galerias</Text>
           </TouchableOpacity>
 
           {isFaceSearchActive && (
             <View style={styles.activeFaceBanner}>
-              <Sparkles size={14} color="#006BD6" />
+              <Sparkles size={14} color="var(--primary-color)" />
               <Text style={styles.activeFaceText}>
                 Fotos encontradas por reconhecimento facial (
                 {filteredPhotos.length})
@@ -1008,7 +1008,7 @@ export default function EventDetails() {
           >
             <View style={styles.spotlightLeft}>
               <View style={styles.spotlightIconBox}>
-                <ScanFace size={26} color="#006BD6" strokeWidth={2} />
+                <ScanFace size={26} color="var(--primary-color)" strokeWidth={2} />
               </View>
               <View style={styles.spotlightTextBox}>
                 <Text style={styles.spotlightTitle}>
@@ -1203,7 +1203,7 @@ export default function EventDetails() {
           {/* 6. Photo Grid or Private Lock Message */}
           {loading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color="#006BD6" />
+              <ActivityIndicator size="large" color="var(--primary-color)" />
               <Text style={styles.loadingText}>
                 Carregando fotos da galeria...
               </Text>
@@ -1211,7 +1211,7 @@ export default function EventDetails() {
           ) : isPrivateEvent && !isFaceSearchActive ? (
             <View style={styles.privateEventBox}>
               <View style={styles.privateLockCircle}>
-                <Lock size={32} color="#006BD6" />
+                <Lock size={32} color="var(--primary-color)" />
               </View>
               <Text style={styles.privateEventTitle}>
                 Galeria com Privacidade Ativada
@@ -1313,7 +1313,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   backBtnText: {
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontSize: 13,
     fontWeight: FontWeights.bold,
   },
@@ -1337,7 +1337,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: Radius.full,
@@ -1492,7 +1492,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   btnFaceSearchGreen: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingVertical: 10,
     paddingHorizontal: 22,
     borderRadius: 8,
@@ -1501,7 +1501,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 2px 8px rgba(0, 107, 214, 0.25)',
   },
   btnClearFaceGreen: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1603,10 +1603,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabIconCircleActivePhoto: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
   },
   tabIconCircleActiveVideo: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
   },
   tabCardLabel: {
     fontSize: 13,
@@ -1759,7 +1759,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
   },
   btnHoverAddActive: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     boxShadow: '0 2px 8px rgba(0, 107, 214, 0.3)',
   },
   btnHoverAddText: {
@@ -1784,8 +1784,8 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   cartBtnMobileActive: {
-    backgroundColor: '#006BD6',
-    borderColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
+    borderColor: 'var(--primary-color)',
   },
 
   loadingBox: {
@@ -1837,7 +1837,7 @@ const styles = StyleSheet.create({
     maxWidth: 520,
   },
   btnPrivateAction: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,

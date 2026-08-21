@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     color: '#F7F9FC',
   },
   btnPrimary: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingHorizontal: Spacing.four,
     borderRadius: Radius.md,
     justifyContent: 'center',
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  orderValue: { fontSize: 16, fontWeight: FontWeights.extrabold, color: '#009DFF' },
+  orderValue: { fontSize: 16, fontWeight: FontWeights.extrabold, color: "var(--primary-color)" },
   downloadButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,7 +497,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: Radius.sm,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
   },
   downloadButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: FontWeights.bold },
   btnPix: {
@@ -507,5 +507,5 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     alignItems: 'center',
   },
-  btnPixText: { color: '#009DFF', fontWeight: FontWeights.bold, fontSize: 12 },
+  btnPixText: { color: "var(--primary-color)", fontWeight: FontWeights.bold, fontSize: 12 },
 });

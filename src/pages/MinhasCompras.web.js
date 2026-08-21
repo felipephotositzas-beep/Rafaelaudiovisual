@@ -402,7 +402,7 @@ export default function MinhasCompras() {
             {isViewingPix && (
               <View style={styles.pixPanel}>
                 {pixLoading ? (
-                  <ActivityIndicator color="#006BD6" />
+                  <ActivityIndicator color="var(--primary-color)" />
                 ) : pixData ? (
                   <>
                     <PixQrCode pixData={pixData} compact />
@@ -428,7 +428,7 @@ export default function MinhasCompras() {
                       </Text>
                     </TouchableOpacity>
                     <View style={styles.pixAwaitingRow}>
-                      <ActivityIndicator size="small" color="#006BD6" />
+                      <ActivityIndicator size="small" color="var(--primary-color)" />
                       <Text style={styles.pixAwaitingText}>
                         Aguardando confirmação bancária...
                       </Text>
@@ -460,7 +460,7 @@ export default function MinhasCompras() {
         <View style={[styles.leftColumn, isMobile && styles.leftColumnMobile]}>
           <View style={[styles.cpfCard, isMobile && styles.cpfCardMobile]}>
             <View style={styles.cpfCardIconRow}>
-              <ShoppingBag size={22} color="#006BD6" />
+              <ShoppingBag size={22} color="var(--primary-color)" />
               <Text style={styles.sectionTitle}>Minhas Compras</Text>
             </View>
             <Text style={styles.subtitle}>
@@ -563,7 +563,7 @@ export default function MinhasCompras() {
           {!searched && !loading && (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>
-                <ShoppingBag size={36} color="#006BD6" />
+                <ShoppingBag size={36} color="var(--primary-color)" />
               </View>
               <Text style={styles.emptyStateTitle}>
                 Acesse suas fotos compradas
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   btnBuscar: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
     borderRadius: Radius.md,
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.semibold,
     textAlign: 'center',
   },
-  tabTextActive: { color: '#006BD6', fontWeight: FontWeights.bold },
+  tabTextActive: { color: 'var(--primary-color)', fontWeight: FontWeights.bold },
 
   // Order cards
   orderCard: {
@@ -833,14 +833,14 @@ const styles = StyleSheet.create({
   orderValue: {
     fontSize: 18,
     fontWeight: FontWeights.extrabold,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
   },
   orderItems: {
     fontSize: 12,
     color: '#64748B',
   },
   downloadButton: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
 
   // Pix Panel
   btnPix: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     borderRadius: Radius.md,
     paddingVertical: Spacing.three,
     alignItems: 'center',
@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   btnPrimaryCopy: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     borderRadius: Radius.md,
     paddingVertical: Spacing.three,
     alignItems: 'center',

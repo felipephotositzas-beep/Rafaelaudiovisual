@@ -41,7 +41,7 @@ export default function CartFloatingBar() {
         <View style={styles.right}>
           <Text style={styles.price}>R$ {cartTotal.toFixed(2).replace('.', ',')}</Text>
           <View style={styles.arrowCircle}>
-            <ArrowRight size={16} color="#006BD6" strokeWidth={2.5} />
+            <ArrowRight size={16} color="var(--primary-color)" strokeWidth={2.5} />
           </View>
         </View>
       </TouchableOpacity>
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     maxWidth: 540,
     alignSelf: 'center',
     marginHorizontal: 'auto',
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     borderRadius: Radius.full,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#006BD6',
+    borderColor: 'var(--primary-color)',
   },
   badgeText: {
     color: '#FFFFFF',

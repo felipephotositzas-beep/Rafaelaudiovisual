@@ -65,7 +65,7 @@ export default function CartModal({ visible, onClose, onCheckout }) {
           <View style={s.header}>
             <View style={s.headerLeft}>
               <View style={s.cartIconCircle}>
-                <ShoppingCart size={18} color="#009DFF" />
+                <ShoppingCart size={18} color="var(--primary-color)" />
               </View>
               <Text style={s.headerTitle}>Seu Carrinho</Text>
               {cartItems.length > 0 && (
@@ -95,11 +95,11 @@ export default function CartModal({ visible, onClose, onCheckout }) {
               {/* Trust bar */}
               <View style={s.trustBar}>
                 <View style={s.trustItem}>
-                  <ShieldCheck size={13} color="#009DFF" />
+                  <ShieldCheck size={13} color="var(--primary-color)" />
                   <Text style={s.trustText}>Compra 100% Segura</Text>
                 </View>
                 <View style={s.trustItem}>
-                  <Zap size={13} color="#009DFF" />
+                  <Zap size={13} color="var(--primary-color)" />
                   <Text style={s.trustText}>Liberação Imediata</Text>
                 </View>
               </View>
@@ -260,7 +260,7 @@ const s = StyleSheet.create({
     color: '#0F172A',
   },
   headerBadge: {
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     width: 22,
     height: 22,
     borderRadius: Radius.full,
@@ -297,7 +297,7 @@ const s = StyleSheet.create({
   },
   trustText: {
     fontSize: 11,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
     fontWeight: FontWeights.semibold,
   },
 
@@ -367,7 +367,7 @@ const s = StyleSheet.create({
   cartPrice: {
     fontSize: 15,
     fontWeight: FontWeights.extrabold,
-    color: '#006BD6',
+    color: 'var(--primary-color)',
   },
   removeBtn: {
     padding: Spacing.two,

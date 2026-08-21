@@ -179,8 +179,8 @@ export default function Home() {
   }));
 
   // Cores dinâmicas do tema White-Label
-  const primaryColor = config.theme?.primaryColor || '#006BD6';
-  const primaryDeep = config.theme?.primaryDeep || '#063A78';
+  const primaryColor = config.theme?.primaryColor || 'var(--primary-color)';
+  const primaryDeep = config.theme?.primaryDeep || "var(--primary-deep)";
 
   return (
     <ScrollView style={s.page} contentContainerStyle={s.pageContent}>

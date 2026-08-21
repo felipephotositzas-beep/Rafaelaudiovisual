@@ -353,7 +353,7 @@ export default function EventDetails() {
           accessibilityRole="button"
           accessibilityLabel={`Compartilhar evento ${eventData?.name || ''}`}
         >
-          <Share2 size={14} color="#009DFF" />
+          <Share2 size={14} color="var(--primary-color)" />
           <Text style={styles.shareButtonText}>
             {linkCopied ? 'Link copiado!' : 'Compartilhar evento'}
           </Text>
@@ -364,7 +364,7 @@ export default function EventDetails() {
       <View style={styles.faceSearchCard}>
         <View style={styles.faceSearchRow}>
           <View style={styles.faceSearchIcon}>
-            <ScanFace size={22} color="#009DFF" />
+            <ScanFace size={22} color="var(--primary-color)" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.faceSearchTitle}>Reconhecimento Facial</Text>
@@ -410,7 +410,7 @@ export default function EventDetails() {
                 setIsCameraVisible(true);
               }}
             >
-              <Camera size={16} color="#009DFF" />
+              <Camera size={16} color="var(--primary-color)" />
               <Text style={styles.faceMenuOptionText}>Tirar selfie agora</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -446,7 +446,7 @@ export default function EventDetails() {
       {loading && (
         <ActivityIndicator
           size="large"
-          color="#006BD6"
+          color="var(--primary-color)"
           style={{ marginVertical: 30 }}
         />
       )}
@@ -508,7 +508,7 @@ export default function EventDetails() {
         ListFooterComponent={
           loadingMore ? (
             <ActivityIndicator
-              color="#006BD6"
+              color="var(--primary-color)"
               style={{ marginVertical: 20 }}
             />
           ) : null
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#006BD6',
+    backgroundColor: 'var(--primary-color)',
     paddingVertical: 10,
     borderRadius: Radius.md,
   },
@@ -695,7 +695,7 @@ const styles = StyleSheet.create({
   discountTitle: {
     fontSize: 10,
     fontWeight: FontWeights.extrabold,
-    color: '#009DFF',
+    color: "var(--primary-color)",
     letterSpacing: 0.8,
     marginBottom: 6,
   },
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
   tierPct: {
     fontSize: 12,
     fontWeight: FontWeights.bold,
-    color: '#009DFF',
+    color: "var(--primary-color)",
   },
   tierQty: {
     fontSize: 9,
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   cartBtnActive: {
-    backgroundColor: '#006BD6',
-    borderColor: '#009DFF',
+    backgroundColor: 'var(--primary-color)',
+    borderColor: "var(--primary-color)",
   },
 });
