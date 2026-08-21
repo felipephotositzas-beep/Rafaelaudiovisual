@@ -187,45 +187,47 @@ export default function Home() {
       {/* ═════════════════════════════════════════════════════════════════════
           0. BANNER PROMOCIONAL CONFIGURÁVEL (Redirecionamento para Evento)
       ═════════════════════════════════════════════════════════════════════ */}
-      {config.banners?.enableHeroPromoBanner && config.banners?.heroPromoBanner?.title && (
-        <View style={s.promoBannerWrapper}>
+      {config.banners?.enableHeroPromoBanner && config.banners?.promoBanners?.map((banner, i) => (
+        <View key={banner.id || i} style={[s.promoBannerWrapper, { marginTop: i === 0 ? 0 : -10 }]}>
           <TouchableOpacity
-            style={[s.promoBannerCard, { backgroundColor: primaryDeep }]}
+            style={[s.promoBannerCard, { backgroundColor: primaryDeep, backgroundImage: banner.imageUrl ? `url(${banner.imageUrl})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }]}
             onPress={() => {
-              const banner = config.banners?.heroPromoBanner;
-              if (banner?.targetEventId) {
-                navigation.navigate('EventDetails', { id: banner.targetEventId });
-              } else if (banner?.externalLink) {
-                if (typeof window !== 'undefined') window.open(banner.externalLink, '_blank');
-                else Linking.openURL(banner.externalLink);
+              if (banner.link) {
+                 if (banner.link.startsWith('http')) {
+                    if (typeof window !== 'undefined') window.open(banner.link, '_blank');
+                    else Linking.openURL(banner.link);
+                 } else {
+                    navigation.navigate('EventDetails', { id: banner.link });
+                 }
               } else {
                 scrollToSection('galerias-destaque');
               }
             }}
             activeOpacity={0.9}
           >
+            {banner.imageUrl && <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14 }} />}
             <View style={s.promoBannerContent}>
               <View style={s.promoBannerLeft}>
                 <View style={s.promoSparkleBadge}>
                   <Sparkles size={14} color="#F59E0B" />
                   <Text style={s.promoSparkleText}>DESTAQUE ESPECIAL</Text>
                 </View>
-                <Text style={s.promoBannerTitle}>{config.banners.heroPromoBanner.title}</Text>
-                {config.banners.heroPromoBanner.subtitle ? (
-                  <Text style={s.promoBannerSubtitle}>{config.banners.heroPromoBanner.subtitle}</Text>
+                <Text style={[s.promoBannerTitle, banner.imageUrl && { color: '#FFF' }]}>{banner.title}</Text>
+                {banner.subtitle ? (
+                  <Text style={[s.promoBannerSubtitle, banner.imageUrl && { color: '#E2E8F0' }]}>{banner.subtitle}</Text>
                 ) : null}
               </View>
 
               <View style={[s.btnPromoAction, { backgroundColor: primaryColor }]}>
                 <Text style={s.btnPromoActionText}>
-                  {config.banners.heroPromoBanner.buttonText || 'Acessar Galeria'}
+                  {banner.buttonText || 'Acessar Galeria'}
                 </Text>
                 <ArrowRight size={14} color="#FFFFFF" />
               </View>
             </View>
           </TouchableOpacity>
         </View>
-      )}
+      ))}
 
       {/* ═════════════════════════════════════════════════════════════════════
           1. HERO SECTION (Light Theme & White-Label)

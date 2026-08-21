@@ -31,6 +31,8 @@ services:
       POSTGRES_HOST: db
     ports:
       - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       - db
     networks:

@@ -93,7 +93,42 @@ export default function AdminPanel() {
   const [loadingEventDetails, setLoadingEventDetails] = useState(false);
 
   // Tab: Banners
-  const [bannerForm, setBannerForm] = useState(config.banners);
+  const [bannerForm, setBannerForm] = useState(() => {
+    const banners = config.banners || {};
+    // Migra de heroPromoBanner pra promoBanners array, se precisar
+    if (!banners.promoBanners && banners.heroPromoBanner) {
+      banners.promoBanners = [{
+        id: 'banner_1',
+        imageUrl: banners.heroPromoBanner.imageUrl || '',
+        title: banners.heroPromoBanner.title || '',
+        subtitle: banners.heroPromoBanner.subtitle || '',
+        link: banners.heroPromoBanner.externalLink || banners.heroPromoBanner.targetEventSlug || '',
+        buttonText: banners.heroPromoBanner.buttonText || 'Acessar Galeria Agora',
+      }];
+    }
+    if (!banners.promoBanners) banners.promoBanners = [];
+    return banners;
+  });
+
+  const uploadImageToServer = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('https://rafaelpublicado.com.br/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // data.url vai ser /api/uploads/arquivo.jpg
+        return 'https://rafaelpublicado.com.br' + data.url;
+      }
+      return null;
+    } catch (err) {
+      console.warn('Erro no upload', err);
+      return null;
+    }
+  };
 
   // Tab: Branding & Texts
   const [brandingForm, setBrandingForm] = useState(config.branding);
@@ -803,10 +838,10 @@ export default function AdminPanel() {
               </Text>
             </View>
 
-            {/* Banner Promocional de Destaque */}
+            {/* Banners Promocionais (Múltiplos) */}
             <View style={styles.cardBox}>
               <View style={styles.cardBoxHeaderBetween}>
-                <Text style={styles.cardBoxTitle}>Banner Promocional no Topo da Home</Text>
+                <Text style={styles.cardBoxTitle}>Banners Promocionais</Text>
                 <TouchableOpacity
                   style={[
                     styles.btnToggle,
@@ -820,104 +855,134 @@ export default function AdminPanel() {
                   }
                   activeOpacity={0.8}
                 >
-                  <Text
-                    style={[
-                      styles.btnToggleText,
-                      bannerForm.enableHeroPromoBanner ? styles.btnToggleTextActive : styles.btnToggleTextInactive,
-                    ]}
-                  >
+                  <Text style={[styles.btnToggleText, bannerForm.enableHeroPromoBanner ? styles.btnToggleTextActive : styles.btnToggleTextInactive]}>
                     {bannerForm.enableHeroPromoBanner ? 'ATIVADO ✓' : 'DESATIVADO'}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.formGrid}>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Título do Banner</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={bannerForm.heroPromoBanner?.title}
-                    onChangeText={(v) =>
-                      setBannerForm((prev) => ({
-                        ...prev,
-                        heroPromoBanner: { ...prev.heroPromoBanner, title: v },
-                      }))
-                    }
-                    placeholder="Ex: Fotos Oficiais do Maratona 2026 Já Disponíveis!"
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
+              {bannerForm.promoBanners?.map((banner, index) => (
+                <View key={banner.id} style={{ marginBottom: 20, padding: 15, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                    <Text style={{ fontWeight: 'bold', color: '#0F172A' }}>Banner {index + 1}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const newBanners = [...bannerForm.promoBanners];
+                        newBanners.splice(index, 1);
+                        setBannerForm(prev => ({ ...prev, promoBanners: newBanners }));
+                      }}
+                    >
+                      <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: 'bold' }}>X REMOVER</Text>
+                    </TouchableOpacity>
+                  </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Subtítulo / Descrição</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={bannerForm.heroPromoBanner?.subtitle}
-                    onChangeText={(v) =>
-                      setBannerForm((prev) => ({
-                        ...prev,
-                        heroPromoBanner: { ...prev.heroPromoBanner, subtitle: v },
-                      }))
-                    }
-                    placeholder="Ex: Encontre-se pelo reconhecimento facial e baixe em alta resolução."
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
+                  <View style={styles.formGrid}>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Título do Banner</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={banner.title}
+                        onChangeText={(v) => {
+                          const newBanners = [...bannerForm.promoBanners];
+                          newBanners[index].title = v;
+                          setBannerForm(prev => ({ ...prev, promoBanners: newBanners }));
+                        }}
+                        placeholder="Ex: Fotos do Evento X Já Disponíveis!"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>ID do Evento de Destino (Redirecionamento Interno)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={bannerForm.heroPromoBanner?.targetEventId}
-                    onChangeText={(v) =>
-                      setBannerForm((prev) => ({
-                        ...prev,
-                        heroPromoBanner: { ...prev.heroPromoBanner, targetEventId: v },
-                      }))
-                    }
-                    placeholder="Ex: aa12f6ec-5d65-4fa7-a435-5da6155be6a0"
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Subtítulo / Descrição</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={banner.subtitle}
+                        onChangeText={(v) => {
+                          const newBanners = [...bannerForm.promoBanners];
+                          newBanners[index].subtitle = v;
+                          setBannerForm(prev => ({ ...prev, promoBanners: newBanners }));
+                        }}
+                        placeholder="Ex: Clique aqui para ver todas as fotos."
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Ou Link Externo Opcional (WhatsApp / Patrocinador)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={bannerForm.heroPromoBanner?.externalLink}
-                    onChangeText={(v) =>
-                      setBannerForm((prev) => ({
-                        ...prev,
-                        heroPromoBanner: { ...prev.heroPromoBanner, externalLink: v },
-                      }))
-                    }
-                    placeholder="Ex: https://wa.me/5599991297693"
-                    placeholderTextColor="#94A3B8"
-                  />
-                </View>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Link de Destino (URL do Evento, WhatsApp, etc)</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={banner.link}
+                        onChangeText={(v) => {
+                          const newBanners = [...bannerForm.promoBanners];
+                          newBanners[index].link = v;
+                          setBannerForm(prev => ({ ...prev, promoBanners: newBanners }));
+                        }}
+                        placeholder="Ex: https://rafaelpublicado.com.br/event/meu-evento"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>URL da Imagem de Fundo do Banner (Opcional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={bannerForm.heroPromoBanner?.imageUrl}
-                    onChangeText={(v) =>
-                      setBannerForm((prev) => ({
-                        ...prev,
-                        heroPromoBanner: { ...prev.heroPromoBanner, imageUrl: v },
-                      }))
-                    }
-                    placeholder="https://images.unsplash.com/..."
-                    placeholderTextColor="#94A3B8"
-                  />
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Texto do Botão</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={banner.buttonText}
+                        onChangeText={(v) => {
+                          const newBanners = [...bannerForm.promoBanners];
+                          newBanners[index].buttonText = v;
+                          setBannerForm(prev => ({ ...prev, promoBanners: newBanners }));
+                        }}
+                        placeholder="Ex: Acessar Galeria"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Imagem do Banner</Text>
+                      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ flex: 1, padding: 8, borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8 }}
+                          onChange={async (e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              const file = e.target.files[0];
+                              const url = await uploadImageToServer(file);
+                              if (url) {
+                                const newBanners = [...bannerForm.promoBanners];
+                                newBanners[index].imageUrl = url;
+                                setBannerForm(prev => ({ ...prev, promoBanners: newBanners }));
+                              } else {
+                                alert('Erro ao fazer upload da imagem.');
+                              }
+                            }
+                          }}
+                        />
+                      </View>
+                      {banner.imageUrl ? (
+                         <img src={banner.imageUrl} style={{ width: '100%', height: 100, objectFit: 'cover', marginTop: 10, borderRadius: 8 }} />
+                      ) : null}
+                    </View>
+                  </View>
                 </View>
-              </View>
+              ))}
 
               <TouchableOpacity
-                style={styles.btnPrimarySave}
-                onPress={handleSaveBanners}
-                activeOpacity={0.88}
+                style={{ alignSelf: 'flex-start', marginBottom: 20 }}
+                onPress={() => {
+                  setBannerForm(prev => ({
+                    ...prev,
+                    promoBanners: [
+                      ...(prev.promoBanners || []),
+                      { id: 'banner_' + Date.now(), title: '', subtitle: '', link: '', imageUrl: '', buttonText: 'Acessar Galeria' }
+                    ]
+                  }));
+                }}
               >
+                <Text style={{ color: 'var(--primary-color)', fontWeight: 'bold' }}>+ ADICIONAR NOVO BANNER</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.btnPrimarySave} onPress={handleSaveBanners} activeOpacity={0.88}>
                 <Check size={16} color="#FFFFFF" />
                 <Text style={styles.btnPrimarySaveText}>Salvar Configuração de Banners</Text>
               </TouchableOpacity>

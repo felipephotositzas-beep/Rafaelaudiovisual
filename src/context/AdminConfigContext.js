@@ -37,15 +37,16 @@ export const DEFAULT_CONFIG = {
   // ── 3. BANNERS DA HOME & REDIRECIONAMENTOS ────────────────────────────────
   banners: {
     enableHeroPromoBanner: false,
-    heroPromoBanner: {
-      imageUrl: '',
-      title: 'Confira as fotos do último grande evento!',
-      subtitle: 'Clique para acessar a galeria oficial completa',
-      targetEventId: '',
-      targetEventSlug: '',
-      externalLink: '',
-      buttonText: 'Acessar Galeria Agora',
-    },
+    promoBanners: [
+      {
+        id: 'banner_1',
+        imageUrl: '',
+        title: 'Confira as fotos do último grande evento!',
+        subtitle: 'Clique para acessar a galeria completa',
+        link: '', // Pode ser o link do evento ou externo
+        buttonText: 'Acessar Galeria Agora',
+      }
+    ],
     heroMainImage: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=900&auto=format&fit=crop&q=85',
     heroThumbnails: [
       'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=260&auto=format&fit=crop&q=80',

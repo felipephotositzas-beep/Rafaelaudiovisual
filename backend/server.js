@@ -1,12 +1,46 @@
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const db = require('./db');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Servir arquivos estáticos da pasta uploads
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+app.use('/api/uploads', express.static(uploadsDir));
+
+// Configurar multer para upload de imagens
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
+
 const PORT = process.env.PORT || 3001;
+
+// Endpoint de upload
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Nenhuma imagem enviada' });
+  }
+  // O link final que o app vai usar: /api/uploads/arquivo.jpg
+  // Mas como o Nginx tá mapeado, podemos usar um caminho absoluto ou relativo.
+  // Vamos retornar o path relativo que o Nginx / Node resolvem:
+  const imageUrl = `/api/uploads/${req.file.filename}`;
+  res.json({ url: imageUrl });
+});
 
 // Obter configurações gerais
 app.get('/api/config', async (req, res) => {
