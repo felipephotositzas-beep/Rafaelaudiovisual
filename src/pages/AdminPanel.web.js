@@ -18,6 +18,7 @@ import {
   Activity,
   Globe,
   ScanFace,
+  MessageCircle,
   ShieldCheck,
   Users,
   Image as ImageIcon,
@@ -48,7 +49,7 @@ import {
   Search,
 } from 'lucide-react-native';
 import { useAdminConfig } from '../context/AdminConfigContext';
-import { fetchAnalyticsSummary } from '../utils/analytics';
+import { fetchAnalyticsSummary, fetchWhatsAppLeads, deleteWhatsAppLead } from '../utils/analytics';
 import {
   resolvePhotographerProfile,
   fetchAllEvents,
@@ -85,6 +86,8 @@ export default function AdminPanel() {
   // Active Tab
   const [activeTab, setActiveTab] = useState('analytics'); // Padrão abre na aba de Métricas
   const [analyticsData, setAnalyticsData] = useState(null);
+  const [whatsappLeads, setWhatsappLeads] = useState([]);
+  const [loadingLeads, setLoadingLeads] = useState(false);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [analyticsSubTab, setAnalyticsSubTab] = useState('events'); // 'events' | 'searches' | 'activity' | 'seo'
   const [analyticsFilterQuery, setAnalyticsFilterQuery] = useState('');
@@ -92,8 +95,12 @@ export default function AdminPanel() {
   const loadAnalytics = async () => {
     setLoadingAnalytics(true);
     try {
-      const data = await fetchAnalyticsSummary();
+      const [data, leads] = await Promise.all([
+        fetchAnalyticsSummary(),
+        fetchWhatsAppLeads()
+      ]);
       if (data) setAnalyticsData(data);
+      if (leads) setWhatsappLeads(leads);
     } catch (err) {
       console.warn('Erro ao carregar métricas:', err);
     } finally {
@@ -178,6 +185,38 @@ export default function AdminPanel() {
     { name: 'Vermelho Vibrante', primary: '#DC2626', deep: '#7F1D1D', hover: '#B91C1C' },
     { name: 'Preto / Cinza Minimal', primary: '#1E293B', deep: '#0F172A', hover: '#334155' },
   ];
+
+
+  const exportLeadsToCsv = () => {
+    if (!whatsappLeads || whatsappLeads.length === 0) {
+      alert('Nenhum lead de WhatsApp para exportar.');
+      return;
+    }
+
+    let csvContent = 'data:text/csv;charset=utf-8,ID,WhatsApp,Data_Cadastro,Origem\n';
+    whatsappLeads.forEach((l) => {
+      const dateStr = new Date(l.created_at).toLocaleString('pt-BR');
+      csvContent += `${l.id},"${l.whatsapp}","${dateStr}","${l.source}"\n`;
+    });
+
+    if (typeof window !== 'undefined') {
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `leads_whatsapp_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!confirm('Deseja realmente excluir este contato de WhatsApp?')) return;
+    const ok = await deleteWhatsAppLead(leadId);
+    if (ok) {
+      setWhatsappLeads((prev) => prev.filter((l) => l.id !== leadId));
+    }
+  };
 
   // Carrega lista de eventos para a aba de Configuração por Evento
   useEffect(() => {
@@ -615,12 +654,27 @@ export default function AdminPanel() {
                   <Text style={styles.statSub}>Pesquisas de eventos/cidades</Text>
                 </View>
               </View>
+
+              {/* Leads WhatsApp */}
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                  <MessageCircle size={20} color="#16A34A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statLabel}>Leads WhatsApp</Text>
+                  <Text style={styles.statValue}>
+                    {whatsappLeads.length || 0}
+                  </Text>
+                  <Text style={styles.statSub}>Telefones cadastrados</Text>
+                </View>
+              </View>
             </View>
 
             {/* ── SUB-ABAS DE DETALHES ── */}
             <View style={styles.cardBox}>
               <View style={styles.subTabsHeader}>
                 {[
+                  { key: 'leads', label: 'Leads WhatsApp (' + whatsappLeads.length + ')', icon: MessageCircle },
                   { key: 'events', label: 'Acessos por Evento', icon: Calendar },
                   { key: 'searches', label: 'Quem Procurou (Termos)', icon: Search },
                   { key: 'activity', label: 'Atividade Recente', icon: Activity },
@@ -643,6 +697,93 @@ export default function AdminPanel() {
                   );
                 })}
               </View>
+
+
+              {/* 0. SUB-ABA: LEADS WHATSAPP */}
+              {analyticsSubTab === 'leads' && (
+                <View style={{ paddingTop: 16 }}>
+                  <View style={styles.cardBoxHeaderBetween}>
+                    <View>
+                      <Text style={[styles.cardBoxTitle, { marginBottom: 2 }]}>
+                        Contatos & Leads de WhatsApp Capturados ({whatsappLeads.length})
+                      </Text>
+                      <Text style={styles.fieldHint}>
+                        Clientes que se cadastraram no rodapé da Home para receber fotos e avisos de novos eventos.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.btnActionSecondary, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                      onPress={exportLeadsToCsv}
+                      activeOpacity={0.8}
+                    >
+                      <Download size={14} color="var(--primary-color)" />
+                      <Text style={styles.btnActionSecondaryText}>Exportar CSV</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {loadingAnalytics ? (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="var(--primary-color)" />
+                      <Text style={{ fontSize: 13, color: '#64748B', marginTop: 8 }}>Carregando contatos...</Text>
+                    </View>
+                  ) : whatsappLeads.length === 0 ? (
+                    <View style={{ padding: 32, alignItems: 'center' }}>
+                      <Text style={{ color: '#64748B', fontSize: 14 }}>
+                        Ainda não há leads de WhatsApp cadastrados.
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ marginTop: 12, gap: 8 }}>
+                      {whatsappLeads.map((lead) => {
+                        const cleanNum = String(lead.whatsapp || '').replace(/\D/g, '');
+                        const fullNum = cleanNum.startsWith('55') ? cleanNum : `55${cleanNum}`;
+                        const waLink = `https://api.whatsapp.com/send?phone=${fullNum}&text=Ol%C3%A1!%20Vi%20que%20voc%C3%AA%20se%20cadastrou%20no%20site%20Rafael%20Publicado%20para%20receber%20novidades%20dos%20pr%C3%B3ximos%20eventos.`;
+
+                        return (
+                          <View key={lead.id} style={styles.analyticsEventRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                              <View style={[styles.statIconBox, { width: 36, height: 36, backgroundColor: '#DCFCE7' }]}>
+                                <MessageCircle size={18} color="#16A34A" />
+                              </View>
+                              <View>
+                                <Text style={{ fontSize: 15, fontWeight: '800', color: '#0F172A' }}>
+                                  {lead.whatsapp}
+                                </Text>
+                                <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                                  Cadastrado em: {new Date(lead.created_at).toLocaleString('pt-BR')} • Origem: {lead.source || 'Página Inicial'}
+                                </Text>
+                              </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                              <TouchableOpacity
+                                style={[styles.btnOpenLink, { backgroundColor: '#16A34A', borderColor: '#15803D' }]}
+                                onPress={() => {
+                                  if (typeof window !== 'undefined') window.open(waLink, '_blank');
+                                }}
+                                activeOpacity={0.85}
+                              >
+                                <MessageCircle size={13} color="#FFFFFF" />
+                                <Text style={[styles.btnOpenLinkText, { color: '#FFFFFF', fontWeight: '800' }]}>
+                                  Conversar no WhatsApp
+                                </Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[styles.btnOpenLink, { borderColor: '#FCA5A5', backgroundColor: '#FEF2F2' }]}
+                                onPress={() => handleDeleteLead(lead.id)}
+                                activeOpacity={0.8}
+                              >
+                                <Trash2 size={13} color="#DC2626" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* 1. SUB-ABA: EVENTOS */}
               {analyticsSubTab === 'events' && (

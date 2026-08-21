@@ -38,7 +38,7 @@ import { mockEventsData } from '../data/mockEvents';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { Radius, Spacing, Layout } from '../constants/theme';
 import { useAdminConfig } from '../context/AdminConfigContext';
-import { trackPageView, trackSearch } from '../utils/analytics';
+import { trackPageView, trackSearch, submitWhatsAppLead } from '../utils/analytics';
 
 // Inline Vector Icons for Social Media
 function InstagramIcon({ size = 18, color = '#475569' }) {
@@ -77,8 +77,41 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
-  const [emailInput, setEmailInput] = useState('');
-  const [emailSubscribed, setEmailSubscribed] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState('');
+  const [whatsappSubscribed, setWhatsappSubscribed] = useState(false);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+
+  const formatWhatsAppNumber = (text) => {
+    const clean = text.replace(/\D/g, '');
+    if (clean.length <= 2) return clean;
+    if (clean.length <= 6) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+    if (clean.length <= 10) return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+    return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7, 11)}`;
+  };
+
+  const handleWhatsAppChange = (text) => {
+    setWhatsappInput(formatWhatsAppNumber(text));
+  };
+
+  const handleSubscribeWhatsApp = async () => {
+    const clean = whatsappInput.replace(/\D/g, '');
+    if (clean.length < 10) {
+      alert('Por favor, digite seu WhatsApp completo com DDD.');
+      return;
+    }
+
+    setWhatsappLoading(true);
+    const ok = await submitWhatsAppLead(whatsappInput);
+    setWhatsappLoading(false);
+
+    if (ok) {
+      setWhatsappSubscribed(true);
+      setWhatsappInput('');
+      setTimeout(() => setWhatsappSubscribed(false), 5000);
+    } else {
+      alert('Erro ao cadastrar WhatsApp. Tente novamente.');
+    }
+  };
 
   // Analytics & SEO: Rastreia pageview na Home e injeta Schema.org
   useEffect(() => {
@@ -193,13 +226,7 @@ export default function Home() {
     }
   };
 
-  const handleSubscribe = () => {
-    if (emailInput.includes('@')) {
-      setEmailSubscribed(true);
-      setTimeout(() => setEmailSubscribed(false), 4000);
-      setEmailInput('');
-    }
-  };
+
 
   const formatDateBadge = (dateString) => {
     if (!dateString) return null;
@@ -642,35 +669,44 @@ export default function Home() {
       </View>
 
       {/* ═════════════════════════════════════════════════════════════════════
-          5. NEWSLETTER
+          5. CAPTURA DE WHATSAPP / PRÓXIMOS EVENTOS
       ═════════════════════════════════════════════════════════════════════ */}
       <View style={s.newsletterSection}>
         <View style={s.newsletterInner}>
           <View style={[s.newsletterCard, { backgroundColor: primaryColor }, isMobile && s.newsletterCardMobile]}>
             <View style={[s.newsletterLeft, isMobile && s.newsletterLeftMobile]}>
               <View style={s.newsletterMailCircle}>
-                <Mail size={22} color={primaryColor} />
+                <MessageCircle size={22} color={primaryColor} />
               </View>
               <View style={s.newsletterTextGroup}>
                 <Text style={s.newsletterTitle}>Fique por dentro dos próximos eventos</Text>
-                <Text style={s.newsletterSubtitle}>Receba em primeira mão quando as fotos forem publicadas.</Text>
+                <Text style={s.newsletterSubtitle}>Receba em primeira mão no seu WhatsApp quando as fotos forem publicadas.</Text>
               </View>
             </View>
 
             <View style={[s.newsletterForm, isMobile && s.newsletterFormMobile]}>
               <TextInput
                 style={[s.newsletterInput, isMobile && s.newsletterInputMobile]}
-                placeholder="Seu melhor e-mail..."
+                placeholder="Seu WhatsApp com DDD (ex: 99 99129-7693)"
                 placeholderTextColor="#94A3B8"
-                value={emailInput}
-                onChangeText={setEmailInput}
+                value={whatsappInput}
+                onChangeText={handleWhatsAppChange}
+                keyboardType="phone-pad"
+                maxLength={15}
               />
               <TouchableOpacity
-                style={[s.btnSubscribe, isMobile && s.btnSubscribeMobile]}
-                onPress={handleSubscribe}
+                style={[
+                  s.btnSubscribe,
+                  isMobile && s.btnSubscribeMobile,
+                  whatsappSubscribed && { backgroundColor: '#16A34A' }
+                ]}
+                onPress={handleSubscribeWhatsApp}
+                disabled={whatsappLoading || whatsappSubscribed}
                 activeOpacity={0.88}
               >
-                <Text style={s.btnSubscribeText}>{emailSubscribed ? 'Inscrito ✓' : 'Inscrever-se'}</Text>
+                <Text style={s.btnSubscribeText}>
+                  {whatsappSubscribed ? 'Cadastrado ✓' : whatsappLoading ? 'Enviando...' : 'Receber Novidades'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

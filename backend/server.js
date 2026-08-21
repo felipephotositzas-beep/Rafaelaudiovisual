@@ -159,6 +159,54 @@ app.get('/api/analytics/summary', async (req, res) => {
   }
 });
 
+
+// ─── LEADS WHATSAPP (CAPTURADOS NA HOME) ──────────────────────────────────────
+
+// Cadastrar novo WhatsApp
+app.post('/api/leads/whatsapp', async (req, res) => {
+  try {
+    const { whatsapp, name, source } = req.body;
+    if (!whatsapp || !whatsapp.trim()) {
+      return res.status(400).json({ error: 'WhatsApp é obrigatório' });
+    }
+
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+
+    await db.query(`
+      INSERT INTO whatsapp_leads (whatsapp, name, source, ip)
+      VALUES ($1, $2, $3, $4)
+    `, [whatsapp.trim(), name ? name.trim() : null, source || 'home_newsletter', ip]);
+
+    res.json({ success: true, message: 'WhatsApp cadastrado com sucesso!' });
+  } catch (err) {
+    console.error('Erro ao salvar lead de whatsapp:', err);
+    res.status(500).json({ error: 'Erro ao cadastrar WhatsApp' });
+  }
+});
+
+// Listar todos os leads de WhatsApp
+app.get('/api/leads/whatsapp', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM whatsapp_leads ORDER BY created_at DESC');
+    res.json({ leads: result.rows });
+  } catch (err) {
+    console.error('Erro ao buscar leads:', err);
+    res.status(500).json({ error: 'Erro ao listar contatos' });
+  }
+});
+
+// Excluir lead
+app.delete('/api/leads/whatsapp/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.query('DELETE FROM whatsapp_leads WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao deletar lead:', err);
+    res.status(500).json({ error: 'Erro ao excluir contato' });
+  }
+});
+
 // ─── SITEMAP & ROBOTS PARA O GOOGLE ──────────────────────────────────────────
 
 const generateSitemapXml = async () => {
