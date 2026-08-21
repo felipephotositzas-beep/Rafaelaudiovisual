@@ -180,15 +180,6 @@ function DesktopHeader({ navigation }) {
           >
             <Text style={hStyles.navLinkText}>Minhas Compras</Text>
           </TouchableOpacity>
-
-          {/* Atalho Painel Admin */}
-          <TouchableOpacity
-            style={[hStyles.navLink, hStyles.adminNavLink]}
-            onPress={() => navigation.navigate('Admin')}
-          >
-            <ShieldCheck size={14} color="#006BD6" />
-            <Text style={[hStyles.navLinkText, { color: '#006BD6', fontWeight: '700' }]}>Painel Admin</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Right Actions */}
@@ -197,10 +188,10 @@ function DesktopHeader({ navigation }) {
           
           <TouchableOpacity
             style={hStyles.btnCtaHeader}
-            onPress={() => scrollToSection('galerias-destaque')}
+            onPress={() => navigation.navigate('Admin')}
             activeOpacity={0.88}
           >
-            <Text style={hStyles.btnCtaHeaderText}>Acessar galeria</Text>
+            <Text style={hStyles.btnCtaHeaderText}>Entrar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -306,22 +297,13 @@ function MobileHeader({ navigation }) {
             <ChevronRight size={16} color="#94A3B8" style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[hStyles.mobileMenuItem, { backgroundColor: '#EFF6FF' }]}
-            onPress={() => handleNav('Admin')}
-          >
-            <ShieldCheck size={18} color="#006BD6" />
-            <Text style={[hStyles.mobileMenuText, { color: '#006BD6', fontWeight: '700' }]}>Painel Admin</Text>
-            <ChevronRight size={16} color="#006BD6" style={{ marginLeft: 'auto' }} />
-          </TouchableOpacity>
-
           <View style={hStyles.mobileMenuDivider} />
 
           <TouchableOpacity
             style={hStyles.mobileCtaBtn}
-            onPress={() => scrollToSection('galerias-destaque')}
+            onPress={() => handleNav('Admin')}
           >
-            <Text style={hStyles.mobileCtaText}>Acessar galeria</Text>
+            <Text style={hStyles.mobileCtaText}>Entrar</Text>
           </TouchableOpacity>
         </View>
       )}
