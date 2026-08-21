@@ -87,8 +87,19 @@ export default function Home() {
     let hasLoadedApiEvents = false;
 
     try {
-      // Busca os eventos para todos os fotógrafos ativos com deduplicação inteligente
-      const allRes = await fetchMultiPhotographerEvents(activePhotographers);
+      // Busca os eventos para todos os fotógrafos ativos com streaming progressivo
+      const allRes = await fetchMultiPhotographerEvents(
+        activePhotographers,
+        {},
+        {},
+        (intermediateResults) => {
+          if (intermediateResults && intermediateResults.length > 0) {
+            hasLoadedApiEvents = true;
+            setEvents(intermediateResults);
+            setLoading(false); // Libera a tela imediatamente assim que a página 1 chega!
+          }
+        }
+      );
       if (allRes.ok) {
         const allData = await allRes.json();
         if (allData.results && allData.results.length > 0) {

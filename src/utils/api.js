@@ -5,6 +5,9 @@ export const API_BASE = 'https://painel.topfotos.com.br';
 export const DEFAULT_PHOTOGRAPHER_ID = 'aa12f6ec-5d65-4fa7-a435-5da6155be6a0';
 export const DEFAULT_PHOTOGRAPHER_SLUG = 'rafael-costa';
 
+// Cache em memória de eventos para resposta instantânea (0ms)
+const eventsCache = new Map();
+
 // Substitui '/api/...' por 'https://painel.topfotos.com.br/api/...'
 const buildUrl = (path) => `${API_BASE}${path}`;
 
@@ -84,7 +87,7 @@ export const resolvePhotographerProfile = async (urlOrSlug) => {
   }
 };
 
-// ─── EVENTOS (Suporte Multi-Fotógrafo e Deduplicação) ─────────────────────────
+// ─── EVENTOS (Suporte Multi-Fotógrafo e Deduplicação Instantânea) ─────────────
 
 export const fetchEventsForPhotographer = (photographerId, params = {}, options = {}) => {
   const query = new URLSearchParams({
@@ -98,104 +101,137 @@ export const fetchEvents = (params = {}, options = {}) => {
   return fetchEventsForPhotographer(DEFAULT_PHOTOGRAPHER_ID, params, options);
 };
 
-const wait = (milliseconds) =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-const fetchEventsPageData = async (
-  photographerId,
-  page,
-  params,
-  options,
-  maxAttempts = 3
-) => {
-  let lastError;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const response = await fetchEventsForPhotographer(photographerId, { ...params, page }, options);
-      if (response.ok) return response.json();
-
-      const error = new Error(`Falha ao carregar a página ${page}.`);
-      error.status = response.status;
-      lastError = error;
-
-      const canRetry = response.status === 429 || response.status >= 500;
-      if (!canRetry) {
-        error.retryable = false;
-        throw error;
-      }
-    } catch (error) {
-      if (options.signal?.aborted || error?.name === 'AbortError') throw error;
-      if (error?.retryable === false) throw error;
-      lastError = error;
-    }
-
-    if (attempt < maxAttempts) {
-      await wait(300 * 2 ** (attempt - 1));
-    }
-  }
-
-  throw lastError || new Error(`Falha ao carregar a página ${page}.`);
-};
-
-// Busca todos os eventos para múltiplos fotógrafos com mesclagem inteligente
-export const fetchMultiPhotographerEvents = async (photographers = [], params = {}, options = {}) => {
+// Busca inicial ultra-rápida (Apenas Página 1 de cada fotógrafo ativo)
+export const fetchQuickInitialEvents = async (photographers = [], params = {}, options = {}) => {
   const activePhotographers = photographers.filter((p) => p && p.active !== false);
   const targetIds = activePhotographers.length > 0
     ? activePhotographers.map((p) => p.id)
     : [DEFAULT_PHOTOGRAPHER_ID];
 
-  const eventsMap = new Map(); // Key: event.id ou slug normalizado
-  let firstMeta = null;
+  const eventsMap = new Map();
 
-  // Busca paralela controlada para cada fotógrafo
-  await Promise.all(
+  // Requisições paralelas para a página 1 (leva menos de 1 segundo)
+  const resultsArr = await Promise.all(
     targetIds.map(async (photogId) => {
       try {
-        let page = 1;
-        while (page <= 20) {
-          const data = await fetchEventsPageData(photogId, page, params, options).catch(() => null);
-          if (!data || !data.results) break;
-          if (!firstMeta) firstMeta = data;
-
-          for (const ev of data.results) {
-            if (!ev || !ev.id) continue;
-            
-            const existing = eventsMap.get(ev.id);
-            if (!existing) {
-              // Primeiro fotógrafo que registrou este evento
-              eventsMap.set(ev.id, {
-                ...ev,
-                photographersContributing: [photogId],
-              });
-            } else {
-              // Evento compartilhado! Une os fotógrafos contribuintes sem duplicar o card
-              if (!existing.photographersContributing.includes(photogId)) {
-                existing.photographersContributing.push(photogId);
-              }
-              // Soma contagem aproximada se disponível
-              if (ev.photo_quantity) {
-                existing.photo_quantity = (existing.photo_quantity || 0) + ev.photo_quantity;
-              }
-            }
-          }
-
-          if (!data.next) break;
-          page += 1;
+        const res = await fetchEventsForPhotographer(photogId, { ...params, page: 1 }, options);
+        if (res.ok) {
+          const data = await res.json();
+          return { photogId, events: data.results || [] };
         }
-      } catch (err) {
-        console.warn(`Erro ao buscar eventos do fotografo ${photogId}:`, err);
-      }
+      } catch {}
+      return { photogId, events: [] };
     })
   );
 
+  for (const { photogId, events } of resultsArr) {
+    for (const ev of events) {
+      if (!ev || !ev.id) continue;
+      const existing = eventsMap.get(ev.id);
+      if (!existing) {
+        eventsMap.set(ev.id, {
+          ...ev,
+          photographersContributing: [photogId],
+        });
+      } else {
+        if (!existing.photographersContributing.includes(photogId)) {
+          existing.photographersContributing.push(photogId);
+        }
+      }
+    }
+  }
+
   const results = Array.from(eventsMap.values());
-  // Ordena os eventos por data mais recente
   results.sort((a, b) => {
     const dateA = new Date(a.event_date || a.date || a.created_at || 0).getTime();
     const dateB = new Date(b.event_date || b.date || b.created_at || 0).getTime();
     return dateB - dateA;
   });
+
+  return results;
+};
+
+// Busca completa de todos os eventos em segundo plano
+export const fetchMultiPhotographerEvents = async (
+  photographers = [],
+  params = {},
+  options = {},
+  onProgress = null
+) => {
+  const activePhotographers = photographers.filter((p) => p && p.active !== false);
+  const targetIds = activePhotographers.length > 0
+    ? activePhotographers.map((p) => p.id)
+    : [DEFAULT_PHOTOGRAPHER_ID];
+
+  const cacheKey = targetIds.sort().join(',');
+  const cached = eventsCache.get(cacheKey);
+
+  // Se já tiver em cache na memória, retorna imediatamente (0 ms)
+  if (cached && cached.length > 0) {
+    if (onProgress) onProgress(cached);
+  }
+
+  const eventsMap = new Map();
+  if (cached) {
+    for (const ev of cached) eventsMap.set(ev.id, ev);
+  }
+
+  // 1. Busca rápida da Página 1
+  const initial = await fetchQuickInitialEvents(photographers, params, options);
+  for (const ev of initial) {
+    eventsMap.set(ev.id, ev);
+  }
+
+  if (onProgress) {
+    const intermediate = Array.from(eventsMap.values()).sort((a, b) => {
+      const dateA = new Date(a.event_date || a.date || a.created_at || 0).getTime();
+      const dateB = new Date(b.event_date || b.date || b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    onProgress(intermediate);
+  }
+
+  // 2. Busca paralela controlada das páginas 2 a 10
+  await Promise.all(
+    targetIds.map(async (photogId) => {
+      // Faz fetch paralelo das páginas 2, 3, 4, 5, 6, 7, 8
+      const pagesToFetch = [2, 3, 4, 5, 6, 7, 8];
+      const pagePromises = pagesToFetch.map((p) =>
+        fetchEventsForPhotographer(photogId, { ...params, page: p }, options)
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null)
+      );
+
+      const responses = await Promise.all(pagePromises);
+      for (const data of responses) {
+        if (!data || !data.results) continue;
+        for (const ev of data.results) {
+          if (!ev || !ev.id) continue;
+          const existing = eventsMap.get(ev.id);
+          if (!existing) {
+            eventsMap.set(ev.id, {
+              ...ev,
+              photographersContributing: [photogId],
+            });
+          } else {
+            if (!existing.photographersContributing.includes(photogId)) {
+              existing.photographersContributing.push(photogId);
+            }
+          }
+        }
+      }
+    })
+  );
+
+  const results = Array.from(eventsMap.values());
+  results.sort((a, b) => {
+    const dateA = new Date(a.event_date || a.date || a.created_at || 0).getTime();
+    const dateB = new Date(b.event_date || b.date || b.created_at || 0).getTime();
+    return dateB - dateA;
+  });
+
+  // Salva no cache
+  eventsCache.set(cacheKey, results);
 
   return {
     ok: true,
@@ -221,6 +257,14 @@ export const fetchEventById = async (eventId, options = {}) => {
       json: async () => ({}),
     };
   }
+
+  // Tenta detalhe direto da API primeiro
+  try {
+    const directRes = await fetchEventDetail(eventId);
+    if (directRes.ok) {
+      return directRes;
+    }
+  } catch {}
 
   const response = await fetchAllEvents({}, options);
   if (!response.ok) return response;
