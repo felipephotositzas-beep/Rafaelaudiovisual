@@ -140,12 +140,12 @@ export default function AdminPanel() {
     }
   };
 
-  // Quando o evento selecionado muda, analisa e busca TODOS os fotógrafos presentes no evento
+  // Quando o evento selecionado muda, busca os fotógrafos daquele evento (sem re-escanear ao mudar regras locais)
   useEffect(() => {
     if (selectedEventId) {
       loadPhotographersForSelectedEvent(selectedEventId);
     }
-  }, [selectedEventId, config.photographers, eventRules]);
+  }, [selectedEventId]);
 
   const loadPhotographersForSelectedEvent = async (evId) => {
     setLoadingEventDetails(true);
@@ -217,9 +217,17 @@ export default function AdminPanel() {
     }
   };
 
-  // ─── ALTERAR VISIBILIDADE / ORDEM NO EVENTO ───────────────────────────────
+  // ─── ALTERAR VISIBILIDADE / ORDEM NO EVENTO (INSTANTÂNEO / 0ms) ───────────
   const handleTogglePhotographerInEvent = async (photogId) => {
     if (!selectedEventId) return;
+
+    // Atualização Otimista Imediata na UI (sem piscar nem recarregar)
+    setEventPhotogsList((prev) =>
+      prev.map((p) =>
+        p.id === photogId ? { ...p, isHidden: !p.isHidden } : p
+      )
+    );
+
     const currentRule = eventRules[selectedEventId]?.[photogId] || { isHidden: false, order: 1 };
     await setEventPhotographerRule(selectedEventId, photogId, {
       isHidden: !currentRule.isHidden,
@@ -233,12 +241,14 @@ export default function AdminPanel() {
     const targetIdx = index + direction;
     if (targetIdx < 0 || targetIdx >= newList.length) return;
 
-    // Troca
+    // Troca Imediata na UI
     const temp = newList[index];
     newList[index] = newList[targetIdx];
     newList[targetIdx] = temp;
 
-    // Atualiza as ordens de todos
+    setEventPhotogsList(newList);
+
+    // Salva em background
     for (let i = 0; i < newList.length; i++) {
       const p = newList[i];
       await setEventPhotographerRule(selectedEventId, p.id, {
