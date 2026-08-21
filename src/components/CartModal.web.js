@@ -7,6 +7,7 @@ import {
   FlatList,
   Image,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Camera,
@@ -31,8 +32,15 @@ import {
 const theme = Colors.dark;
 
 export default function CartModal({ visible, onClose, onCheckout }) {
-  const { cartItems, removeFromCart, cartTotal, cartDiscount, cartSubtotal } =
-    useCart();
+  const {
+    cartItems,
+    removeFromCart,
+    cartTotal,
+    cartDiscount,
+    cartReady,
+    cartSyncing,
+    cartError,
+  } = useCart();
   const { isMobile } = useBreakpoint();
 
   if (!visible) return null;
@@ -159,13 +167,29 @@ export default function CartModal({ visible, onClose, onCheckout }) {
                 </View>
 
                 <TouchableOpacity
-                  style={s.checkoutBtn}
+                  style={[
+                    s.checkoutBtn,
+                    !cartReady && s.checkoutBtnDisabled,
+                  ]}
                   onPress={onCheckout}
+                  disabled={!cartReady}
                   activeOpacity={0.88}
                 >
-                  <Text style={s.checkoutBtnText}>Finalizar Compra</Text>
-                  <ArrowRight size={17} color="#FFFFFF" />
+                  {cartSyncing ? (
+                    <>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={s.checkoutBtnText}>Sincronizando carrinho...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={s.checkoutBtnText}>Finalizar Compra</Text>
+                      <ArrowRight size={17} color="#FFFFFF" />
+                    </>
+                  )}
                 </TouchableOpacity>
+                {cartError ? (
+                  <Text style={s.syncError}>{cartError}</Text>
+                ) : null}
               </View>
             </>
           )}
@@ -400,6 +424,17 @@ const s = StyleSheet.create({
     paddingVertical: Spacing.four,
     borderRadius: Radius.md,
     boxShadow: '0 4px 14px rgba(0, 107, 214, 0.3)',
+  },
+  checkoutBtnDisabled: {
+    opacity: 0.55,
+    boxShadow: 'none',
+  },
+  syncError: {
+    color: '#DC2626',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+    marginTop: 8,
   },
   checkoutBtnText: {
     color: '#FFFFFF',

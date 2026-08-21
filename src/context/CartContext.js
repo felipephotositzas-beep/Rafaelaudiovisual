@@ -1,4 +1,11 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+} from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   fetchCart,
@@ -28,6 +35,9 @@ const generateUUID = () =>
     return v.toString(16);
   });
 
+const wait = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState([]);
   const [cartId, setCartId] = useState('');
@@ -36,9 +46,19 @@ export const CartProvider = ({ children }) => {
   const [cartTotal, setCartTotal] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [currentEventId, setCurrentEventId] = useState('');
+  const [cartError, setCartError] = useState('');
+  const [pendingCartOperations, setPendingCartOperations] = useState(0);
+  const cartIdRef = useRef('');
+  const cartInitializationRef = useRef(Promise.resolve());
+
+  const updateCartId = (nextCartId) => {
+    cartIdRef.current = nextCartId;
+    setCartId(nextCartId);
+  };
 
   const syncCartState = (backendCart) => {
     if (!backendCart) return;
+    setCartError('');
     if (backendCart.items) {
       const items = backendCart.items.map(item => ({
         id: item.photo.id,
@@ -70,67 +90,66 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const loadLocalCart = async (eventId) => {
-    try {
-      const saved = await AsyncStorage.getItem('topfotos_cart_' + eventId);
-      if (saved) {
-        const rawItems = JSON.parse(saved);
-        const items = rawItems.map(item => ({
-          ...item,
-          price: parsePrice(item.price, PHOTO_PRICE),
-        }));
-        setCartItems(items);
-        const subtotal = items.reduce((sum, i) => sum + i.price, 0);
-        setCartSubtotal(subtotal);
-        setCartTotal(subtotal);
-        setCartDiscount(0);
-      } else {
-        setCartItems([]);
-        setCartSubtotal(0);
-        setCartTotal(0);
-        setCartDiscount(0);
-      }
-    } catch (e) {
-      console.warn('loadLocalCart error:', e);
-    }
-  };
-
-  const fetchAndSyncCart = async (targetCartId, eventId = '') => {
+  const fetchAndSyncCart = async (targetCartId, requireItems = false) => {
     try {
       const res = await fetchCart(targetCartId);
       if (res.ok) {
         const data = await res.json();
-        if (!Array.isArray(data?.items) || data.items.length === 0) {
-          if (eventId) loadLocalCart(eventId);
+        if (
+          data?.open === false ||
+          !Array.isArray(data?.items) ||
+          (requireItems && data.items.length === 0)
+        ) {
           return false;
         }
         syncCartState(data);
         return true;
-      } else {
-        if (eventId) loadLocalCart(eventId);
-        return false;
       }
+      return false;
     } catch (err) {
       console.warn('fetchAndSyncCart error:', err);
-      if (eventId) loadLocalCart(eventId);
       return false;
     }
   };
 
-  const initializeCartForEvent = async (eventId) => {
+  const initializeCartForEvent = (eventId) => {
     setCurrentEventId(eventId);
-    let currentCartId = await AsyncStorage.getItem('cart_by_event_' + eventId);
-    if (!currentCartId) {
-      currentCartId = generateUUID();
-      await AsyncStorage.setItem('cart_by_event_' + eventId, currentCartId);
-    }
-    setCartId(currentCartId);
-    await fetchAndSyncCart(currentCartId, eventId);
+    setCartError('');
+
+    const initialization = (async () => {
+      const storageKey = 'cart_by_event_' + eventId;
+      const savedCartId = await AsyncStorage.getItem(storageKey);
+
+      if (savedCartId) {
+        updateCartId(savedCartId);
+        const loaded = await fetchAndSyncCart(savedCartId);
+        if (loaded) return true;
+
+        await AsyncStorage.removeItem('topfotos_cart_' + eventId);
+      }
+
+      const newCartId = generateUUID();
+      updateCartId(newCartId);
+      setCartItems([]);
+      setCartSubtotal(0);
+      setCartDiscount(0);
+      setCartTotal(0);
+      setAppliedCoupon(null);
+      await AsyncStorage.setItem(storageKey, newCartId);
+      return true;
+    })();
+
+    cartInitializationRef.current = initialization;
+    return initialization;
   };
 
   const initializeCartWithId = async (specificCartId) => {
-    setCartId(specificCartId);
-    return fetchAndSyncCart(specificCartId);
+    updateCartId(specificCartId);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      if (await fetchAndSyncCart(specificCartId, true)) return true;
+      if (attempt < 2) await wait(350 * (attempt + 1));
+    }
+    return false;
   };
 
   // Persiste o carrinho localmente quando muda
@@ -145,13 +164,15 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (photo) => {
     if (cartItems.some(item => item.id === photo.id)) return;
 
-    let targetCartId = cartId;
+    await cartInitializationRef.current;
+
+    let targetCartId = cartIdRef.current;
     if (!targetCartId && currentEventId) {
       targetCartId = await AsyncStorage.getItem('cart_by_event_' + currentEventId) || '';
     }
     if (!targetCartId) {
       targetCartId = generateUUID();
-      setCartId(targetCartId);
+      updateCartId(targetCartId);
       if (currentEventId) {
         await AsyncStorage.setItem('cart_by_event_' + currentEventId, targetCartId);
       }
@@ -168,6 +189,8 @@ export const CartProvider = ({ children }) => {
       price: parsePrice(photo.price, PHOTO_PRICE),
     };
     const updated = [...cartItems, tempItem];
+    setCartError('');
+    setPendingCartOperations((count) => count + 1);
     setCartItems(updated);
     const subtotal = updated.reduce((sum, i) => sum + i.price, 0);
     setCartSubtotal(subtotal);
@@ -176,12 +199,34 @@ export const CartProvider = ({ children }) => {
     // Sync com backend
     try {
       const res = await addPhotoToCart(targetCartId, photo.id);
-      if (res.ok) {
-        const data = await res.json();
-        syncCartState(data);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail || errorData.error || 'Não foi possível adicionar a foto.'
+        );
       }
+      const data = await res.json();
+      syncCartState(data);
+      return true;
     } catch (err) {
       console.error('addToCart backend error:', err);
+      setCartItems((currentItems) => {
+        const remaining = currentItems.filter((item) => item.id !== photo.id);
+        const nextTotal = remaining.reduce((sum, item) => sum + item.price, 0);
+        setCartSubtotal(nextTotal);
+        setCartTotal(nextTotal);
+        return remaining;
+      });
+      setCartError(
+        err?.message || 'Não foi possível sincronizar o carrinho. Tente novamente.'
+      );
+      Alert.alert(
+        'Carrinho não sincronizado',
+        'A foto não foi adicionada na Top Fotos. Tente novamente.'
+      );
+      return false;
+    } finally {
+      setPendingCartOperations((count) => Math.max(0, count - 1));
     }
   };
 
@@ -216,6 +261,7 @@ export const CartProvider = ({ children }) => {
     setCartDiscount(0);
     setCartTotal(0);
     setAppliedCoupon(null);
+    setCartError('');
     if (currentEventId) {
       await AsyncStorage.removeItem('topfotos_cart_' + currentEventId);
       await AsyncStorage.removeItem('cart_by_event_' + currentEventId);
@@ -259,6 +305,14 @@ export const CartProvider = ({ children }) => {
       cartSubtotal,
       cartDiscount,
       cartTotal,
+      cartReady:
+        cartItems.length > 0 &&
+        pendingCartOperations === 0 &&
+        cartItems.every(
+          (item) => item.cartItemId && !item.cartItemId.startsWith('temp-')
+        ),
+      cartSyncing: pendingCartOperations > 0,
+      cartError,
       addToCart,
       removeFromCart,
       isInCart,
