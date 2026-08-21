@@ -120,6 +120,15 @@ export default function Home() {
     if (typeof document !== 'undefined') {
       document.title = config.branding?.siteTitle || 'Rafael Publicado | Cobertura Audiovisual de Eventos';
       
+            // Google Search Console Verification Meta Tag
+      let gMeta = document.head.querySelector('meta[name="google-site-verification"]');
+      if (!gMeta) {
+        gMeta = document.createElement('meta');
+        gMeta.name = 'google-site-verification';
+        gMeta.content = 'GS_8RDPnRNJIh-i-8NHgpB188b78OA3tFt2j3eR7j5k';
+        document.head.appendChild(gMeta);
+      }
+
       let script = document.getElementById('schema-org-site');
       if (!script) {
         script = document.createElement('script');
