@@ -481,7 +481,46 @@ export default function AdminPanel() {
 
   // ─── PAINEL PRINCIPAL (Autenticado) ─────────────────────────────────────────
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { flexDirection: isMobile ? 'column' : 'row' }]}>
+
+      {/* ── SIDEBAR (DESKTOP) ── */}
+      {!isMobile && (
+        <View style={[styles.tabsBar, { width: 260, borderRightWidth: 1, borderBottomWidth: 0, height: '100vh', backgroundColor: '#0F172A', borderColor: '#1E293B', zIndex: 10 }]}>
+          <View style={{ padding: 24, paddingBottom: 12, borderBottomWidth: 1, borderColor: '#1E293B', marginBottom: 16 }}>
+            {isMobile ? <BrandLogo size="small" /> : <View />}
+            <Text style={{color: '#94A3B8', fontSize: 11, fontWeight: '700', marginTop: 12, letterSpacing: 1}}>PAINEL ADMIN</Text>
+          </View>
+          <ScrollView contentContainerStyle={{ flexDirection: 'column', alignItems: 'stretch', paddingHorizontal: 16 }}>
+            {[
+              { key: 'analytics', label: 'Métricas & Google', icon: BarChart2 },
+              { key: 'eventSettings', label: 'Fotos por Evento', icon: Sliders },
+              { key: 'photographers', label: 'Multi-Fotógrafos', icon: Users },
+              { key: 'banners', label: 'Banners & Hero', icon: ImageIcon },
+              { key: 'theme', label: 'Cores & White-Label', icon: Palette },
+              { key: 'branding', label: 'Textos & Marca', icon: FileText },
+              { key: 'events', label: 'Mesclagem de Eventos', icon: Calendar },
+              { key: 'advanced', label: 'Backup & Config', icon: Settings },
+            ].map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tabItem, isActive && styles.tabItemActive, { paddingVertical: 12, paddingHorizontal: 16, marginVertical: 2, borderRadius: 8, backgroundColor: isActive ? '#1E293B' : 'transparent', flexDirection: 'row', alignItems: 'center' }]}
+                  onPress={() => setActiveTab(tab.key)}
+                  activeOpacity={0.85}
+                >
+                  <Icon size={18} color={isActive ? '#38BDF8' : '#94A3B8'} strokeWidth={isActive ? 2.5 : 2} />
+                  <Text style={[styles.tabItemText, isActive && styles.tabItemTextActive, { color: isActive ? '#F8FAFC' : '#94A3B8', fontWeight: isActive ? '700' : '600', marginLeft: 12 }]}>{tab.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* ── CONTEÚDO PRINCIPAL ── */}
+      <View style={{ flex: 1, flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       {/* ── TOPBAR DO ADMIN ── */}
       <View style={styles.topbar}>
         <View style={styles.topbarInner}>
@@ -541,6 +580,7 @@ export default function AdminPanel() {
       ) : null}
 
       {/* ── NAVEGAÇÃO DE ABAS DO ADMIN ── */}
+      {isMobile && (
       <View style={styles.tabsBar}>
         <ScrollView
           horizontal
@@ -579,6 +619,7 @@ export default function AdminPanel() {
           })}
         </ScrollView>
       </View>
+      )}
 
       {/* ── CONTEÚDO DA ABA ATIVA ── */}
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
@@ -2032,6 +2073,7 @@ export default function AdminPanel() {
           </View>
         )}
       </ScrollView>
+    </View>
     </View>
   );
 }

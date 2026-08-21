@@ -14,6 +14,7 @@ import {
 import BrandLogo from '../components/BrandLogo';
 import { fetchWhatsAppLeads } from '../utils/analytics';
 import { fetchAllEvents } from '../utils/api';
+import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useAdminConfig } from '../context/AdminConfigContext';
 
 const API = 'https://rafaelpublicado.com.br/api';
@@ -70,6 +71,7 @@ export default function BulkMessage() {
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
+  const { isMobile } = useBreakpoint();
 
   const handleLogin = async () => {
     const success = await loginAdmin(emailInput, passwordInput);
@@ -407,7 +409,7 @@ export default function BulkMessage() {
   // ─── RENDERERS POR ABA ───────────────────────────────────────────────
   
   const renderDashboard = () => (
-    <View style={s.contentInner}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
       <Text style={s.pageTitle}>Dashboard CRM</Text>
       <Text style={s.pageSubtitle}>Visão geral dos seus disparos e base de contatos.</Text>
       
@@ -462,7 +464,7 @@ export default function BulkMessage() {
   );
 
   const renderCosts = () => (
-    <View style={s.contentInner}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
       <Text style={s.pageTitle}>Custo & Análise</Text>
       <Text style={s.pageSubtitle}>Estimativa de custos da Meta Cloud API com base no dólar a R$ {USD_RATE.toFixed(2)}.</Text>
       
@@ -512,8 +514,8 @@ export default function BulkMessage() {
   );
 
   const renderCampaigns = () => (
-    <View style={s.contentInner}>
-      <View style={s.flexBetween}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
+      <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
         <View>
           <Text style={s.pageTitle}>Campanhas</Text>
           <Text style={s.pageSubtitle}>Crie e gerencie disparos de mensagens em massa.</Text>
@@ -527,7 +529,7 @@ export default function BulkMessage() {
 
       {showNewCamp && (
         <View style={[s.card, { marginBottom: 24, borderColor: '#0084FF', borderWidth: 2 }]}>
-          <View style={s.flexBetween}>
+          <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
             <Text style={[s.cardTitle, { marginBottom: 0 }]}>Nova Campanha de Disparo</Text>
             <TouchableOpacity onPress={() => setShowNewCamp(false)}><X size={20} color="#94A3B8" /></TouchableOpacity>
           </View>
@@ -594,7 +596,7 @@ export default function BulkMessage() {
           
           return (
             <View key={camp.id} style={s.card}>
-              <View style={s.flexBetween}>
+              <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
                 <View>
                   <View style={{ flexDirection:'row', gap:8, alignItems:'center', marginBottom:4 }}>
                     <Text style={{ fontSize:15, fontWeight:'800', color:'#0F172A' }}>{camp.name}</Text>
@@ -653,8 +655,8 @@ export default function BulkMessage() {
   );
 
   const renderContacts = () => (
-    <View style={s.contentInner}>
-      <View style={s.flexBetween}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
+      <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
         <View>
           <Text style={s.pageTitle}>Contatos</Text>
           <Text style={s.pageSubtitle}>Gerencie sua base de clientes ({contacts.length} total).</Text>
@@ -733,8 +735,8 @@ export default function BulkMessage() {
   );
 
   const renderLists = () => (
-    <View style={s.contentInner}>
-      <View style={s.flexBetween}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
+      <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
         <View>
           <Text style={s.pageTitle}>Listas de Audiência</Text>
           <Text style={s.pageSubtitle}>Agrupe contatos para usar em campanhas.</Text>
@@ -764,7 +766,7 @@ export default function BulkMessage() {
       <View style={{ flexDirection:'row', flexWrap:'wrap', gap:16, marginTop:20 }}>
         {lists.map(list => (
           <View key={list.id} style={[s.card, { flex:1, minWidth:280 }]}>
-            <View style={s.flexBetween}>
+            <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
               <View>
                 <Text style={{ fontSize:15, fontWeight:'800', color:'#0F172A' }}>{list.name}</Text>
                 <Text style={{ fontSize:13, color:'#0084FF', fontWeight:'700', marginTop:4 }}>{list.contact_count} contatos</Text>
@@ -802,8 +804,8 @@ export default function BulkMessage() {
   );
 
   const renderTemplates = () => (
-    <View style={s.contentInner}>
-      <View style={s.flexBetween}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
+      <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
         <View>
           <Text style={s.pageTitle}>Modelos Meta (HSM)</Text>
           <Text style={s.pageSubtitle}>Templates oficiais aprovados na sua conta do WhatsApp Business.</Text>
@@ -816,7 +818,7 @@ export default function BulkMessage() {
       <View style={{ flexDirection:'row', flexWrap:'wrap', gap:16, marginTop:20 }}>
         {metaTemplates.map(t => (
           <View key={t.id} style={[s.card, { flex:1, minWidth:300 }]}>
-            <View style={s.flexBetween}>
+            <View style={[s.flexBetween, isMobile && { flexDirection: 'column', alignItems: 'flex-start', gap: 12 }]}>
               <Text style={{ fontSize:14, fontWeight:'800', color:'#0F172A' }}>{t.name}</Text>
               <Text style={{ fontSize:10, fontWeight:'700', color:'#16A34A', backgroundColor:'#DCFCE7', paddingHorizontal:6, borderRadius:4 }}>{t.meta_status}</Text>
             </View>
@@ -831,7 +833,7 @@ export default function BulkMessage() {
   );
 
   const renderSettings = () => (
-    <View style={s.contentInner}>
+    <View style={[s.contentInner, isMobile && { padding: 16 }]}>
       <Text style={s.pageTitle}>Configurações da API</Text>
       <Text style={s.pageSubtitle}>Conecte sua conta do Facebook Developer.</Text>
       
@@ -881,20 +883,21 @@ export default function BulkMessage() {
 
   // ─── MAIN LAYOUT ───────────────────────────────────────────────────────
   return (
-    <View style={s.layout}>
+    <View style={[s.layout, isMobile && { flexDirection: 'column' }]}>
       
       {/* SIDEBAR */}
-      <View style={s.sidebar}>
-        <TouchableOpacity style={s.sidebarLogo} onPress={() => navigation.navigate('Admin')} activeOpacity={0.8}>
+      <View style={[s.sidebar, isMobile && { width: '100%', height: 'auto', flexDirection: 'column', paddingTop: 10, paddingBottom: 0 }]}>
+        <View style={[isMobile && {flexDirection:'row', justifyContent:'space-between', paddingHorizontal: 16, alignItems:'center'}]}><TouchableOpacity style={[s.sidebarLogo, isMobile && {borderBottomWidth:0, paddingBottom:0, marginBottom:0}]} onPress={() => navigation.navigate('Admin')} activeOpacity={0.8}>
           <ArrowLeft size={16} color="#94A3B8" />
           <Text style={{ color:'#F8FAFC', fontWeight:'700', fontSize:14, marginLeft:6 }}>Voltar ao Admin</Text>
         </TouchableOpacity>
 
-        <View style={{ paddingHorizontal:12, marginBottom:16 }}>
+        {!isMobile && <View style={{ paddingHorizontal:12, marginBottom:16 }}>
           <Text style={{ color:'#64748B', fontSize:11, fontWeight:'700', letterSpacing:1, marginLeft:8 }}>CRM WHATSAPP</Text>
-        </View>
+        </View>}
+        {isMobile && <BrandLogo size="sm" />}</View>
 
-        <ScrollView style={{ flex:1 }}>
+        <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={false} style={{ flex: isMobile ? 0 : 1, maxHeight: isMobile ? 50 : 'auto', minHeight: isMobile ? 50 : 'auto', marginVertical: isMobile ? 10 : 0 }}>
           {MENUS.map(m => (
             <TouchableOpacity key={m.id} style={[s.menuItem, activeMenu === m.id && s.menuItemActive]} onPress={() => setActiveMenu(m.id)}>
               <m.icon size={18} color={activeMenu === m.id ? '#38BDF8' : '#94A3B8'} />
@@ -903,7 +906,7 @@ export default function BulkMessage() {
           ))}
         </ScrollView>
         
-        <View style={s.sidebarFooter}>
+        {!isMobile && <View style={s.sidebarFooter}>
           <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
             <BrandLogo size="sm" />
           </View>
@@ -912,7 +915,7 @@ export default function BulkMessage() {
               {hasMetaApi ? 'API CONECTADA' : 'API DESCONECTADA'}
             </Text>
           </View>
-        </View>
+        </View>}
       </View>
 
       {/* CONTENT AREA */}
