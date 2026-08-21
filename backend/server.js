@@ -174,6 +174,94 @@ app.get('/api/meta/config', async (req, res) => {
   }
 });
 
+
+// Função auxiliar para sincronizar templates direto da Meta Graph API
+async function syncTemplatesFromMeta(wabaId, accessToken, apiVersion = 'v20.0') {
+  if (!wabaId || !accessToken) {
+    throw new Error('WABA ID e Access Token são obrigatórios para sincronizar.');
+  }
+
+  const metaUrl = `https://graph.facebook.com/${apiVersion}/${wabaId}/message_templates?limit=100`;
+  const response = await fetch(metaUrl, {
+    headers: { 'Authorization': `Bearer ${accessToken}` },
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.data) {
+    throw new Error(data.error?.message || 'Erro ao consultar templates na Meta');
+  }
+
+  const savedTemplates = [];
+
+  for (const item of data.data) {
+    const name = item.name;
+    const category = item.category || 'MARKETING';
+    const language = item.language || 'pt_BR';
+    const metaStatus = item.status || 'APPROVED';
+
+    let headerType = 'NONE';
+    let headerContent = '';
+    let bodyText = '';
+    let footerText = '';
+    let buttons = [];
+
+    (item.components || []).forEach((comp) => {
+      if (comp.type === 'HEADER') {
+        headerType = comp.format || 'TEXT';
+        headerContent = comp.text || '';
+      } else if (comp.type === 'BODY') {
+        bodyText = comp.text || '';
+      } else if (comp.type === 'FOOTER') {
+        footerText = comp.text || '';
+      } else if (comp.type === 'BUTTONS') {
+        buttons = comp.buttons || [];
+      }
+    });
+
+    if (bodyText) {
+      // Upsert template
+      const res = await db.query(`
+        INSERT INTO meta_templates (name, category, language, header_type, header_content, body_text, footer_text, buttons, meta_status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT DO NOTHING
+        RETURNING *;
+      `, [name, category, language, headerType, headerContent, bodyText, footerText, JSON.stringify(buttons), metaStatus]);
+
+      if (res.rows[0]) savedTemplates.push(res.rows[0]);
+    }
+  }
+
+  return { total: data.data.length, synced: savedTemplates.length };
+}
+
+// Endpoint de Sincronização Manual de Templates da Meta
+app.post('/api/meta/sync-templates', async (req, res) => {
+  try {
+    const configRes = await db.query('SELECT * FROM meta_api_config WHERE id = 1');
+    const metaConfig = configRes.rows[0];
+
+    const wabaId = req.body.waba_id || metaConfig?.waba_id;
+    const accessToken = req.body.access_token || metaConfig?.access_token;
+    const apiVersion = req.body.api_version || metaConfig?.api_version || 'v20.0';
+
+    if (!wabaId || !accessToken) {
+      return res.status(400).json({ error: 'WABA ID e Access Token não configurados.' });
+    }
+
+    const result = await syncTemplatesFromMeta(wabaId, accessToken, apiVersion);
+    const templatesRes = await db.query('SELECT * FROM meta_templates ORDER BY id ASC');
+
+    res.json({
+      success: true,
+      message: `${result.total} modelos encontrados na Meta e sincronizados com sucesso!`,
+      templates: templatesRes.rows,
+    });
+  } catch (err) {
+    console.error('Erro na sincronização Meta:', err);
+    res.status(500).json({ error: err.message || 'Erro ao sincronizar modelos da Meta' });
+  }
+});
+
 // Salvar configurações da Meta API
 app.post('/api/meta/config', async (req, res) => {
   try {
@@ -202,7 +290,17 @@ app.post('/api/meta/config', async (req, res) => {
       `, [phone_number_id || '', waba_id || '', api_version || 'v20.0']);
     }
 
-    res.json({ success: true, message: 'Configurações da Meta API salvas com sucesso!' });
+    // Tenta sincronizar automaticamente após salvar
+    let syncInfo = '';
+    if (waba_id && access_token) {
+      try {
+        const syncRes = await syncTemplatesFromMeta(waba_id, access_token, api_version || 'v20.0');
+        syncInfo = ` Sincronizados ${syncRes.total} modelos da Meta!`;
+      } catch (sErr) {
+        console.warn('Auto-sync aviso:', sErr.message);
+      }
+    }
+    res.json({ success: true, message: `Configurações da Meta API salvas com sucesso!${syncInfo}` });
   } catch (err) {
     console.error('Erro ao salvar config Meta:', err);
     res.status(500).json({ error: 'Erro ao salvar configurações Meta' });
