@@ -1,5 +1,5 @@
 // src/pages/AdminPanel.web.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -37,9 +37,13 @@ import {
   FileText,
   Download,
   Upload,
+  ArrowUp,
+  ArrowDown,
+  Camera,
+  Search,
 } from 'lucide-react-native';
 import { useAdminConfig } from '../context/AdminConfigContext';
-import { resolvePhotographerProfile } from '../utils/api';
+import { resolvePhotographerProfile, fetchAllEvents, fetchPhotos } from '../utils/api';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import BrandLogo from '../components/BrandLogo';
 
@@ -48,12 +52,14 @@ export default function AdminPanel() {
   const { isMobile, isTablet } = useBreakpoint();
   const {
     config,
+    eventRules,
     updateConfig,
     resetConfig,
     addPhotographer,
     removePhotographer,
     togglePhotographer,
     setPrimaryPhotographer,
+    setEventPhotographerRule,
     isAuthenticated,
     loginAdmin,
     logoutAdmin,
@@ -65,12 +71,20 @@ export default function AdminPanel() {
   const [loginError, setLoginError] = useState('');
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState('photographers'); // 'photographers' | 'banners' | 'branding' | 'theme' | 'events' | 'advanced'
+  const [activeTab, setActiveTab] = useState('eventSettings'); // 'eventSettings' | 'photographers' | 'banners' | 'branding' | 'theme' | 'events' | 'advanced'
 
   // Tab: Photographers
   const [newPhotographerInput, setNewPhotographerInput] = useState('');
   const [resolvingPhotographer, setResolvingPhotographer] = useState(false);
   const [photographerFeedback, setPhotographerFeedback] = useState({ type: '', msg: '' });
+
+  // Tab: Event Settings (Ordem & Ocultação por Evento)
+  const [allEventsList, setAllEventsList] = useState([]);
+  const [loadingEventsList, setLoadingEventsList] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState('');
+  const [eventSearchQuery, setEventSearchQuery] = useState('');
+  const [eventPhotogsList, setEventPhotogsList] = useState([]);
+  const [loadingEventDetails, setLoadingEventDetails] = useState(false);
 
   // Tab: Banners
   const [bannerForm, setBannerForm] = useState(config.banners);
@@ -94,6 +108,66 @@ export default function AdminPanel() {
     { name: 'Vermelho Vibrante', primary: '#DC2626', deep: '#7F1D1D', hover: '#B91C1C' },
     { name: 'Preto / Cinza Minimal', primary: '#1E293B', deep: '#0F172A', hover: '#334155' },
   ];
+
+  // Carrega lista de eventos para a aba de Configuração por Evento
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAllEventsForAdmin();
+    }
+  }, [isAuthenticated]);
+
+  const loadAllEventsForAdmin = async () => {
+    setLoadingEventsList(true);
+    try {
+      const res = await fetchAllEvents();
+      if (res.ok) {
+        const data = await res.json();
+        const evs = data.results || [];
+        setAllEventsList(evs);
+        if (evs.length > 0 && !selectedEventId) {
+          setSelectedEventId(evs[0].id);
+        }
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar eventos no admin:', err);
+    } finally {
+      setLoadingEventsList(false);
+    }
+  };
+
+  // Quando o evento selecionado muda, analisa os fotógrafos presentes naquele evento
+  useEffect(() => {
+    if (selectedEventId) {
+      loadPhotographersForSelectedEvent(selectedEventId);
+    }
+  }, [selectedEventId, config.photographers, eventRules]);
+
+  const loadPhotographersForSelectedEvent = async (evId) => {
+    setLoadingEventDetails(true);
+    try {
+      // Coleta os fotógrafos cadastrados
+      const registered = config.photographers || [];
+      const currentRules = eventRules[evId] || {};
+
+      // Mapeia os fotógrafos com a regra atual do evento
+      const mapped = registered.map((p, idx) => {
+        const rule = currentRules[p.id] || { isHidden: false, order: idx + 1 };
+        return {
+          ...p,
+          isHidden: rule.isHidden,
+          order: rule.order || idx + 1,
+        };
+      });
+
+      // Ordena de acordo com o `order`
+      mapped.sort((a, b) => a.order - b.order);
+      setEventPhotogsList(mapped);
+    } catch (err) {
+      console.warn('Erro ao carregar fotógrafos do evento:', err);
+    } finally {
+      setLoadingEventDetails(false);
+    }
+  };
 
   // ─── LOGIN HANDLER ────────────────────────────────────────────────────────
   const handleLogin = () => {
@@ -138,6 +212,37 @@ export default function AdminPanel() {
     }
   };
 
+  // ─── ALTERAR VISIBILIDADE / ORDEM NO EVENTO ───────────────────────────────
+  const handleTogglePhotographerInEvent = async (photogId) => {
+    if (!selectedEventId) return;
+    const currentRule = eventRules[selectedEventId]?.[photogId] || { isHidden: false, order: 1 };
+    await setEventPhotographerRule(selectedEventId, photogId, {
+      isHidden: !currentRule.isHidden,
+    });
+    showSavedBadge();
+  };
+
+  const handleMoveOrder = async (index, direction) => {
+    if (!selectedEventId) return;
+    const newList = [...eventPhotogsList];
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= newList.length) return;
+
+    // Troca
+    const temp = newList[index];
+    newList[index] = newList[targetIdx];
+    newList[targetIdx] = temp;
+
+    // Atualiza as ordens de todos
+    for (let i = 0; i < newList.length; i++) {
+      const p = newList[i];
+      await setEventPhotographerRule(selectedEventId, p.id, {
+        order: i + 1,
+      });
+    }
+    showSavedBadge();
+  };
+
   // ─── SALVAR CONFIGURAÇÕES ──────────────────────────────────────────────────
   const showSavedBadge = () => {
     setSaveSuccessMsg('Alterações salvas com sucesso no site!');
@@ -172,6 +277,13 @@ export default function AdminPanel() {
     setThemeForm(updated);
     handleSaveTheme(updated);
   };
+
+  const filteredEventsForSelect = allEventsList.filter((ev) => {
+    if (!eventSearchQuery.trim()) return true;
+    return (ev.name || '').toLowerCase().includes(eventSearchQuery.toLowerCase());
+  });
+
+  const selectedEventObj = allEventsList.find((e) => e.id === selectedEventId);
 
   // ─── TELA DE LOGIN ADMIN (Caso não esteja logado) ───────────────────────────
   if (!isAuthenticated) {
@@ -281,6 +393,7 @@ export default function AdminPanel() {
           contentContainerStyle={styles.tabsBarInner}
         >
           {[
+            { key: 'eventSettings', label: 'Fotos por Evento', icon: Sliders },
             { key: 'photographers', label: 'Multi-Fotógrafos', icon: Users },
             { key: 'banners', label: 'Banners & Hero', icon: ImageIcon },
             { key: 'theme', label: 'Cores & White-Label', icon: Palette },
@@ -313,6 +426,179 @@ export default function AdminPanel() {
 
       {/* ── CONTEÚDO DA ABA ATIVA ── */}
       <ScrollView style={styles.content} contentContainerStyle={styles.contentInner}>
+        {/* ═══════════════════════════════════════════════════════════════════
+            0. ABA: CONFIGURAÇÃO DE FOTOS POR EVENTO (ORDEM & OCULTAÇÃO)
+        ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'eventSettings' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Configuração de Fotos por Evento</Text>
+              <Text style={styles.sectionDesc}>
+                Escolha um evento para definir a **ordem em que as fotos de cada fotógrafo serão mostradas** ou **ocultar completamente as fotos** de um determinado fotógrafo neste evento específico.
+              </Text>
+            </View>
+
+            {/* Seletor de Evento */}
+            <View style={styles.cardBox}>
+              <Text style={styles.cardBoxTitle}>1. Selecione o Evento para Configurar</Text>
+              
+              <View style={styles.searchEventRow}>
+                <Search size={16} color="#64748B" />
+                <TextInput
+                  style={[styles.input, { flex: 1, borderWidth: 0, paddingVertical: 4 }]}
+                  placeholder="Filtrar evento por nome..."
+                  placeholderTextColor="#94A3B8"
+                  value={eventSearchQuery}
+                  onChangeText={setEventSearchQuery}
+                />
+              </View>
+
+              <ScrollView style={styles.eventPickerList} nestedScrollEnabled>
+                {loadingEventsList ? (
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <ActivityIndicator size="small" color="#006BD6" />
+                    <Text style={{ fontSize: 12, color: '#64748B', marginTop: 6 }}>Carregando eventos...</Text>
+                  </View>
+                ) : filteredEventsForSelect.length === 0 ? (
+                  <Text style={{ padding: 12, fontSize: 13, color: '#94A3B8', textAlign: 'center' }}>
+                    Nenhum evento encontrado.
+                  </Text>
+                ) : (
+                  filteredEventsForSelect.slice(0, 15).map((ev) => {
+                    const isSelected = ev.id === selectedEventId;
+                    return (
+                      <TouchableOpacity
+                        key={ev.id}
+                        style={[styles.eventPickerItem, isSelected && styles.eventPickerItemActive]}
+                        onPress={() => setSelectedEventId(ev.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Image
+                          source={{ uri: ev.image || 'https://ik.imagekit.io/yg7h35ptj/public/assets/company/banner-default.jpg' }}
+                          style={styles.eventPickerThumb}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.eventPickerTitle, isSelected && styles.eventPickerTitleActive]} numberOfLines={1}>
+                            {ev.name}
+                          </Text>
+                          <Text style={styles.eventPickerSub} numberOfLines={1}>
+                            {ev.city || 'Cidade não informada'} • ID: {ev.id}
+                          </Text>
+                        </View>
+                        {isSelected && <CheckCircle2 size={16} color="#006BD6" />}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Controle de Fotógrafos no Evento Selecionado */}
+            {selectedEventObj && (
+              <View style={styles.cardBox}>
+                <View style={styles.cardBoxHeaderBetween}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardBoxTitle}>
+                      2. Ordem e Visibilidade dos Fotógrafos no Evento:
+                    </Text>
+                    <Text style={styles.selectedEventNameHighlight}>
+                      "{selectedEventObj.name}"
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.btnOpenGalleryPreview}
+                    onPress={() => navigation.navigate('EventDetails', { id: selectedEventObj.id, event: selectedEventObj })}
+                  >
+                    <ExternalLink size={13} color="#006BD6" />
+                    <Text style={styles.btnOpenGalleryPreviewText}>Ver Galeria</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {loadingEventDetails ? (
+                  <ActivityIndicator size="small" color="#006BD6" style={{ marginVertical: 20 }} />
+                ) : (
+                  <View style={styles.photogOrderList}>
+                    {eventPhotogsList.map((p, idx) => (
+                      <View
+                        key={p.id}
+                        style={[
+                          styles.photogOrderCard,
+                          p.isHidden && styles.photogOrderCardHidden,
+                        ]}
+                      >
+                        {/* Posição / Prioridade */}
+                        <View style={[styles.orderNumberBadge, p.isHidden && styles.orderNumberBadgeHidden]}>
+                          <Text style={styles.orderNumberBadgeText}>{idx + 1}º</Text>
+                        </View>
+
+                        {/* Avatar e Nome */}
+                        <Image source={{ uri: p.avatar }} style={styles.photogAvatarSmall} />
+
+                        <View style={{ flex: 1, gap: 2 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[styles.photogOrderName, p.isHidden && { color: '#94A3B8', textDecorationLine: 'line-through' }]}>
+                              {p.name}
+                            </Text>
+                            {p.isPrimary && (
+                              <View style={styles.primaryMiniBadge}>
+                                <Text style={styles.primaryMiniBadgeText}>PRINCIPAL</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={styles.photogOrderSub}>
+                            {p.isHidden ? '❌ Fotos Ocultas neste evento' : '✅ Fotos exibidas na galeria'}
+                          </Text>
+                        </View>
+
+                        {/* Botões de Mover Ordem */}
+                        <View style={styles.orderControlsRow}>
+                          <TouchableOpacity
+                            style={[styles.btnArrow, idx === 0 && styles.btnArrowDisabled]}
+                            onPress={() => handleMoveOrder(idx, -1)}
+                            disabled={idx === 0}
+                            activeOpacity={0.8}
+                          >
+                            <ArrowUp size={14} color={idx === 0 ? '#CBD5E1' : '#0F172A'} />
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.btnArrow, idx === eventPhotogsList.length - 1 && styles.btnArrowDisabled]}
+                            onPress={() => handleMoveOrder(idx, 1)}
+                            disabled={idx === eventPhotogsList.length - 1}
+                            activeOpacity={0.8}
+                          >
+                            <ArrowDown size={14} color={idx === eventPhotogsList.length - 1 ? '#CBD5E1' : '#0F172A'} />
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Botão de Ocultar / Mostrar */}
+                        <TouchableOpacity
+                          style={[
+                            styles.btnVisibilityToggle,
+                            p.isHidden ? styles.btnVisibilityToggleHidden : styles.btnVisibilityToggleVisible,
+                          ]}
+                          onPress={() => handleTogglePhotographerInEvent(p.id)}
+                          activeOpacity={0.8}
+                        >
+                          {p.isHidden ? <EyeOff size={14} color="#DC2626" /> : <Eye size={14} color="#059669" />}
+                          <Text
+                            style={[
+                              styles.btnVisibilityToggleText,
+                              p.isHidden ? { color: '#DC2626' } : { color: '#059669' },
+                            ]}
+                          >
+                            {p.isHidden ? 'Oculto' : 'Exibindo'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ═══════════════════════════════════════════════════════════════════
             1. ABA: MULTI-FOTÓGRAFOS
         ═══════════════════════════════════════════════════════════════════ */}
@@ -1161,6 +1447,171 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 2,
   },
+  selectedEventNameHighlight: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#006BD6',
+    marginTop: 2,
+  },
+  btnOpenGalleryPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  btnOpenGalleryPreviewText: {
+    color: '#006BD6',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Event Picker in EventSettings
+  searchEventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+  },
+  eventPickerList: {
+    maxHeight: 220,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+  },
+  eventPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  eventPickerItemActive: {
+    backgroundColor: '#EFF6FF',
+  },
+  eventPickerThumb: {
+    width: 38,
+    height: 38,
+    borderRadius: 6,
+    backgroundColor: '#E2E8F0',
+  },
+  eventPickerTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  eventPickerTitleActive: {
+    color: '#006BD6',
+    fontWeight: '700',
+  },
+  eventPickerSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+
+  // Photog Order List in EventSettings
+  photogOrderList: {
+    gap: 10,
+  },
+  photogOrderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  photogOrderCardHidden: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FEE2E2',
+    opacity: 0.75,
+  },
+  orderNumberBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#006BD6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderNumberBadgeHidden: {
+    backgroundColor: '#94A3B8',
+  },
+  orderNumberBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  photogAvatarSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E2E8F0',
+  },
+  photogOrderName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  primaryMiniBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  primaryMiniBadgeText: {
+    color: '#006BD6',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  photogOrderSub: {
+    fontSize: 11,
+    color: '#64748B',
+  },
+  orderControlsRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  btnArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnArrowDisabled: {
+    opacity: 0.3,
+  },
+  btnVisibilityToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  btnVisibilityToggleVisible: {
+    backgroundColor: '#ECFDF5',
+  },
+  btnVisibilityToggleHidden: {
+    backgroundColor: '#FEE2E2',
+  },
+  btnVisibilityToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
   addRow: {
     flexDirection: 'row',
     gap: 10,

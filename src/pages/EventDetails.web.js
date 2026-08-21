@@ -40,6 +40,7 @@ import MediaViewer from '../components/MediaViewer';
 import CartFloatingBar from '../components/CartFloatingBar';
 import CameraCapture from '../components/CameraCapture';
 import { useCart } from '../context/CartContext';
+import { useAdminConfig } from '../context/AdminConfigContext';
 import {
   fetchEventById,
   fetchEvents,
@@ -235,9 +236,49 @@ export default function EventDetails() {
   const [isPrivateEvent, setIsPrivateEvent] = useState(false);
   const photosCacheRef = useRef({});
 
+  const { eventRules } = useAdminConfig();
+
   const { addToCart, removeFromCart, isInCart, initializeCartForEvent } =
     useCart();
   const discountTiers = getProgressiveDiscountTiers(eventData);
+
+  // Helper para filtrar e ordenar fotos de acordo com as regras ativas do evento
+  const processPhotosByEventRules = (loadedPhotos, eventId) => {
+    const rules = eventRules[eventId] || {};
+
+    // 1. Filtra fotos de fotógrafos marcados como ocultos
+    const visiblePhotos = loadedPhotos.filter((p) => {
+      const photogId = p.photographer || p.photographer_id || p.owner;
+      if (photogId && rules[photogId]?.isHidden) {
+        return false;
+      }
+      return true;
+    });
+
+    // 2. Ordena de acordo com a prioridade (order) configurada no Admin
+    visiblePhotos.sort((a, b) => {
+      const photogA = a.photographer || a.photographer_id || a.owner || '';
+      const photogB = b.photographer || b.photographer_id || b.owner || '';
+
+      const orderA = rules[photogA]?.order ?? (photogA === DEFAULT_PHOTOGRAPHER_ID ? 1 : 99);
+      const orderB = rules[photogB]?.order ?? (photogB === DEFAULT_PHOTOGRAPHER_ID ? 1 : 99);
+
+      if (orderA !== orderB) return orderA - orderB;
+
+      // Desempate: Rafael Publicado primeiro
+      const aIsRafael =
+        photogA === DEFAULT_PHOTOGRAPHER_ID ||
+        (a.photographer_name && a.photographer_name.toLowerCase().includes('rafael'));
+      const bIsRafael =
+        photogB === DEFAULT_PHOTOGRAPHER_ID ||
+        (b.photographer_name && b.photographer_name.toLowerCase().includes('rafael'));
+      if (aIsRafael && !bIsRafael) return -1;
+      if (!aIsRafael && bIsRafael) return 1;
+      return 0;
+    });
+
+    return visiblePhotos;
+  };
 
   // Prefetch silencioso da próxima página em background
   const prefetchNextPage = async (nextPage, mediaType) => {
@@ -248,20 +289,7 @@ export default function EventDetails() {
       const res = await fetchPhotos(id, nextPage, mediaType);
       if (res.ok) {
         const data = await res.json();
-        let loaded = data.results || [];
-        loaded.sort((a, b) => {
-          const aIsRafael =
-            a.photographer === DEFAULT_PHOTOGRAPHER_ID ||
-            (a.photographer_name &&
-              a.photographer_name.toLowerCase().includes('rafael'));
-          const bIsRafael =
-            b.photographer === DEFAULT_PHOTOGRAPHER_ID ||
-            (b.photographer_name &&
-              b.photographer_name.toLowerCase().includes('rafael'));
-          if (aIsRafael && !bIsRafael) return -1;
-          if (!aIsRafael && bIsRafael) return 1;
-          return 0;
-        });
+        let loaded = processPhotosByEventRules(data.results || [], id);
         photosCacheRef.current[cacheKey] = {
           results: loaded,
           count: data.count || 0,
@@ -463,22 +491,7 @@ export default function EventDetails() {
       const res = await fetchPhotos(id, pageNumber, mediaType);
       if (res.ok) {
         const data = await res.json();
-        let loadedPhotos = data.results || [];
-
-        // Prioriza as fotos do Rafael Publicado (Rafael Costa) no início
-        loadedPhotos.sort((a, b) => {
-          const aIsRafael =
-            a.photographer === DEFAULT_PHOTOGRAPHER_ID ||
-            (a.photographer_name &&
-              a.photographer_name.toLowerCase().includes('rafael'));
-          const bIsRafael =
-            b.photographer === DEFAULT_PHOTOGRAPHER_ID ||
-            (b.photographer_name &&
-              b.photographer_name.toLowerCase().includes('rafael'));
-          if (aIsRafael && !bIsRafael) return -1;
-          if (!aIsRafael && bIsRafael) return 1;
-          return 0;
-        });
+        let loadedPhotos = processPhotosByEventRules(data.results || [], id);
 
         // Salva no cache da memória
         photosCacheRef.current[cacheKey] = {

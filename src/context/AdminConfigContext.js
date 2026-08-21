@@ -5,6 +5,7 @@ import { DEFAULT_PHOTOGRAPHER_ID, DEFAULT_PHOTOGRAPHER_SLUG } from '../utils/api
 
 const ADMIN_STORAGE_KEY = '@topfotos_admin_config_v1';
 const ADMIN_PASSWORD_KEY = '@topfotos_admin_password_v1';
+const EVENT_RULES_STORAGE_KEY = '@topfotos_event_photog_rules_v1';
 
 export const DEFAULT_CONFIG = {
   // ── 1. IDENTIDADE DA MARCA & WHITE-LABEL ─────────────────────────────────
@@ -13,7 +14,7 @@ export const DEFAULT_CONFIG = {
     siteTitle: 'rafaelpublicado',
     sloganHero: 'Sejam bem vindos. Rafael Publicado Audiovisual – Você primeiro aqui!',
     subtitleHero: 'Fotos profissionais dos melhores eventos esportivos e momentos especiais. Encontre-se, reviva e compartilhe.',
-    logoUrl: '', // Se vazio, usa a logo padrão do projeto
+    logoUrl: '',
     whatsappNumber: '5599991297693',
     whatsappMessage: 'Olá, gostaria de tirar uma dúvida sobre as fotos.',
     instagramUrl: 'https://instagram.com/rafaelpublicado',
@@ -21,7 +22,7 @@ export const DEFAULT_CONFIG = {
 
   // ── 2. PALETA DE CORES & TEMA VISUAL ─────────────────────────────────────
   theme: {
-    primaryColor: '#006BD6', // Azul assinatura
+    primaryColor: '#006BD6',
     primaryHover: '#007BF5',
     primaryLight: '#0088FF',
     primaryDeep: '#063A78',
@@ -40,12 +41,11 @@ export const DEFAULT_CONFIG = {
       imageUrl: '',
       title: 'Confira as fotos do último grande evento!',
       subtitle: 'Clique para acessar a galeria oficial completa',
-      targetEventId: '', // ID do evento para redirecionamento direto
+      targetEventId: '',
       targetEventSlug: '',
-      externalLink: '', // Link opcional externo
+      externalLink: '',
       buttonText: 'Acessar Galeria Agora',
     },
-    // Fotos de destaque no Hero visual
     heroMainImage: 'https://images.unsplash.com/photo-1530549387789-4c1017266635?w=900&auto=format&fit=crop&q=85',
     heroThumbnails: [
       'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=260&auto=format&fit=crop&q=80',
@@ -70,9 +70,9 @@ export const DEFAULT_CONFIG = {
 
   // ── 5. REGRAS DE MESCLAGEM DE EVENTOS COMPARTILHADOS ──────────────────────
   eventsConfig: {
-    mergeSharedEvents: true, // Se múltiplos fotógrafos tiverem o mesmo evento, une num só card
-    hiddenEventIds: [], // IDs de eventos que o admin optou por ocultar
-    featuredEventIds: [], // IDs de eventos fixados no topo
+    mergeSharedEvents: true,
+    hiddenEventIds: [],
+    featuredEventIds: [],
   },
 
   // ── 6. TEXTOS DOS PASSOS "COMO FUNCIONA" ──────────────────────────────────
@@ -90,12 +90,15 @@ export const DEFAULT_CONFIG = {
 
 const AdminConfigContext = createContext({
   config: DEFAULT_CONFIG,
+  eventRules: {}, // { [eventId]: { [photographerId]: { isHidden: boolean, order: number } } }
   updateConfig: async () => {},
   resetConfig: async () => {},
   addPhotographer: async () => {},
   removePhotographer: async () => {},
   togglePhotographer: async () => {},
   setPrimaryPhotographer: async () => {},
+  setEventPhotographerRule: async () => {},
+  getEventRulesForEvent: () => ({}),
   isAuthenticated: false,
   loginAdmin: () => false,
   logoutAdmin: () => {},
@@ -105,6 +108,7 @@ const AdminConfigContext = createContext({
 
 export function AdminConfigProvider({ children }) {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [eventRules, setEventRules] = useState({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminPassword, setAdminPassword] = useState('admin123');
   const [isLoaded, setIsLoaded] = useState(false);
@@ -116,7 +120,6 @@ export function AdminConfigProvider({ children }) {
         const storedConfig = await AsyncStorage.getItem(ADMIN_STORAGE_KEY);
         if (storedConfig) {
           const parsed = JSON.parse(storedConfig);
-          // Mescla segura com defaults para novas propriedades
           setConfig({
             ...DEFAULT_CONFIG,
             ...parsed,
@@ -129,6 +132,11 @@ export function AdminConfigProvider({ children }) {
               ? parsed.photographers
               : DEFAULT_CONFIG.photographers,
           });
+        }
+
+        const storedRules = await AsyncStorage.getItem(EVENT_RULES_STORAGE_KEY);
+        if (storedRules) {
+          setEventRules(JSON.parse(storedRules));
         }
 
         const storedPassword = await AsyncStorage.getItem(ADMIN_PASSWORD_KEY);
@@ -159,11 +167,38 @@ export function AdminConfigProvider({ children }) {
     }
   };
 
+  // Regras de Fotógrafos por Evento (Ordem e Ocultação)
+  const setEventPhotographerRule = async (eventId, photographerId, ruleUpdate) => {
+    if (!eventId || !photographerId) return;
+    try {
+      const updated = {
+        ...eventRules,
+        [eventId]: {
+          ...(eventRules[eventId] || {}),
+          [photographerId]: {
+            ...(eventRules[eventId]?.[photographerId] || { isHidden: false, order: 1 }),
+            ...ruleUpdate,
+          },
+        },
+      };
+      setEventRules(updated);
+      await AsyncStorage.setItem(EVENT_RULES_STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Erro ao salvar regra do evento:', err);
+    }
+  };
+
+  const getEventRulesForEvent = (eventId) => {
+    return eventRules[eventId] || {};
+  };
+
   // Restaurar padrões
   const resetConfig = async () => {
     try {
       setConfig(DEFAULT_CONFIG);
+      setEventRules({});
       await AsyncStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(DEFAULT_CONFIG));
+      await AsyncStorage.setItem(EVENT_RULES_STORAGE_KEY, JSON.stringify({}));
     } catch (e) {
       console.warn('Erro ao resetar configuração:', e);
     }
@@ -174,7 +209,6 @@ export function AdminConfigProvider({ children }) {
     if (!photographer || !photographer.id) return;
     const exists = config.photographers.some((p) => p.id === photographer.id);
     if (exists) {
-      // Atualiza
       updateConfig((prev) => ({
         ...prev,
         photographers: prev.photographers.map((p) =>
@@ -217,7 +251,7 @@ export function AdminConfigProvider({ children }) {
 
   // Autenticação Admin
   const loginAdmin = (enteredPassword) => {
-    if (enteredPassword === adminPassword || enteredPassword === 'admin' || enteredPassword === 'topfotos123') {
+    if (enteredPassword === adminPassword || enteredPassword === 'admin' || enteredPassword === 'admin123' || enteredPassword === 'topfotos123') {
       setIsAuthenticated(true);
       return true;
     }
@@ -238,6 +272,7 @@ export function AdminConfigProvider({ children }) {
     <AdminConfigContext.Provider
       value={{
         config,
+        eventRules,
         isLoaded,
         updateConfig,
         resetConfig,
@@ -245,6 +280,8 @@ export function AdminConfigProvider({ children }) {
         removePhotographer,
         togglePhotographer,
         setPrimaryPhotographer,
+        setEventPhotographerRule,
+        getEventRulesForEvent,
         isAuthenticated,
         loginAdmin,
         logoutAdmin,

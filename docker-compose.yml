@@ -1,0 +1,24 @@
+# docker-compose.yml
+# Deploy completo com PostgreSQL 16 e API Backend para VPS
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: topfotos_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-topfotos_secret_2026}
+      POSTGRES_DB: ${DB_NAME:-topfotos_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+
+volumes:
+  pgdata:
+    driver: local
