@@ -203,55 +203,7 @@ export default function Home() {
                 'Fotos profissionais dos melhores eventos esportivos e momentos especiais. Encontre-se, reviva e compartilhe.'}
             </Text>
 
-      {/* ═════════════════════════════════════════════════════════════════════
-          0. BANNER PROMOCIONAL CONFIGURÁVEL (Redirecionamento para Evento)
-      ═════════════════════════════════════════════════════════════════════ */}
-      {config.banners?.enableHeroPromoBanner && config.banners?.promoBanners?.map((banner, i) => (
-        <View key={banner.id || i} style={[s.promoBannerWrapper, { marginTop: i === 0 ? 0 : -10 }]}>
-          <TouchableOpacity
-            style={[s.promoBannerCard, { backgroundColor: primaryDeep, overflow: 'hidden' }]}
-            onPress={() => {
-              if (banner.link) {
-                 if (banner.link.startsWith('http')) {
-                    if (typeof window !== 'undefined') window.open(banner.link, '_blank');
-                    else Linking.openURL(banner.link);
-                 } else {
-                    navigation.navigate('EventDetails', { id: banner.link });
-                 }
-              } else {
-                scrollToSection('galerias-destaque');
-              }
-            }}
-            activeOpacity={0.9}
-          >
-            {banner.imageUrl ? (
-              <>
-                <Image source={{ uri: banner.imageUrl }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 14 }} resizeMode="cover" />
-                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14 }} />
-              </>
-            ) : null}
-            <View style={s.promoBannerContent}>
-              <View style={s.promoBannerLeft}>
-                <View style={s.promoSparkleBadge}>
-                  <Sparkles size={14} color="#F59E0B" />
-                  <Text style={s.promoSparkleText}>DESTAQUE ESPECIAL</Text>
-                </View>
-                <Text style={[s.promoBannerTitle, banner.imageUrl && { color: '#FFF' }]}>{banner.title}</Text>
-                {banner.subtitle ? (
-                  <Text style={[s.promoBannerSubtitle, banner.imageUrl && { color: '#E2E8F0' }]}>{banner.subtitle}</Text>
-                ) : null}
-              </View>
-
-              <View style={[s.btnPromoAction, { backgroundColor: primaryColor }]}>
-                <Text style={s.btnPromoActionText}>
-                  {banner.buttonText || 'Acessar Galeria'}
-                </Text>
-                <ArrowRight size={14} color="#FFFFFF" />
-              </View>
-            </View>
-          </TouchableOpacity>
-        </View>
-      ))}
+      
 
 
 
@@ -318,8 +270,59 @@ export default function Home() {
               </View>
             </View>
           )}
+
         </View>
       </View>
+
+{/* ═════════════════════════════════════════════════════════════════════
+          0. BANNER PROMOCIONAL CONFIGURÁVEL (Redirecionamento para Evento)
+      ═════════════════════════════════════════════════════════════════════ */}
+      {config.banners?.enableHeroPromoBanner && config.banners?.promoBanners?.map((banner, i) => (
+        <View key={banner.id || i} style={[s.promoBannerWrapper, { marginTop: i === 0 ? 0 : -10 }]}>
+          <TouchableOpacity
+            style={[s.promoBannerCard, { backgroundColor: primaryDeep, overflow: 'hidden' }]}
+            onPress={() => {
+              if (banner.link) {
+                 if (banner.link.startsWith('http')) {
+                    if (typeof window !== 'undefined') window.open(banner.link, '_blank');
+                    else Linking.openURL(banner.link);
+                 } else {
+                    navigation.navigate('EventDetails', { id: banner.link });
+                 }
+              } else {
+                scrollToSection('galerias-destaque');
+              }
+            }}
+            activeOpacity={0.9}
+          >
+            {banner.imageUrl ? (
+              <>
+                <Image source={{ uri: banner.imageUrl }} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 14 }} resizeMode="cover" />
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 14 }} />
+              </>
+            ) : null}
+            <View style={s.promoBannerContent}>
+              <View style={s.promoBannerLeft}>
+                <View style={s.promoSparkleBadge}>
+                  <Sparkles size={14} color="#F59E0B" />
+                  <Text style={s.promoSparkleText}>DESTAQUE ESPECIAL</Text>
+                </View>
+                <Text style={[s.promoBannerTitle, banner.imageUrl && { color: '#FFF' }]}>{banner.title}</Text>
+                {banner.subtitle ? (
+                  <Text style={[s.promoBannerSubtitle, banner.imageUrl && { color: '#E2E8F0' }]}>{banner.subtitle}</Text>
+                ) : null}
+              </View>
+
+              <View style={[s.btnPromoAction, { backgroundColor: primaryColor }]}>
+                <Text style={s.btnPromoActionText}>
+                  {banner.buttonText || 'Acessar Galeria'}
+                </Text>
+                <ArrowRight size={14} color="#FFFFFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+      ))}
 
       {/* ═════════════════════════════════════════════════════════════════════
           2. COMO FUNCIONA (Compact & Modern)
@@ -705,9 +708,13 @@ const s = StyleSheet.create({
 
   // Promo Banner
   promoBannerWrapper: {
+    maxWidth: Layout.containerXl,
+    alignSelf: 'center',
     width: '100%',
-    paddingTop: 24,
-    paddingBottom: 8,
+    paddingHorizontal: Layout.desktopPadding,
+    marginTop: -20,
+    marginBottom: 40,
+    zIndex: 10,
   },
   promoBannerCard: {
     padding: 24,
