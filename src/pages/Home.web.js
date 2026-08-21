@@ -324,56 +324,62 @@ export default function Home() {
             Simples, <Text style={{ color: primaryColor }}>rápido e seguro</Text>
           </Text>
 
-          {/* 4 Step Columns / 2x2 Grid on Mobile */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.howStepsRow, isMobile && s.howStepsRowMobile]}>
-            {/* Step 1 */}
+          
+          {/* 4 Step Columns / Horizontal on Mobile */}
+          <View style={[s.howStepsRow, isMobile && s.howStepsRowMobile]}>
+
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
               <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
-                <Search size={18} color={primaryColor} />
+                <Search size={isMobile ? 16 : 18} color={primaryColor} />
               </View>
-              <Text style={s.howStepNum}>01</Text>
-              <Text style={s.howStepName}>{config.howItWorks?.step1Title || 'Encontre sua galeria'}</Text>
-              <Text style={s.howStepDesc}>
-                {config.howItWorks?.step1Desc || 'Procure pelo evento e acesse a galeria.'}
-              </Text>
+              <Text style={[s.howStepNum, isMobile && s.howStepNumMobile]}>01</Text>
+              <View style={isMobile && s.howStepTextGroupMobile}>
+                <Text style={[s.howStepName, isMobile && s.howStepNameMobile]}>{config.howItWorks?.step1Title || 'Encontre sua galeria'}</Text>
+                <Text style={[s.howStepDesc, isMobile && s.howStepDescMobile]}>
+                  {config.howItWorks?.step1Desc || 'Procure pelo evento e acesse a galeria.'}
+                </Text>
+              </View>
             </View>
 
-            {/* Step 2 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
               <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
-                <ScanFace size={18} color={primaryColor} />
+                <ScanFace size={isMobile ? 16 : 18} color={primaryColor} />
               </View>
-              <Text style={s.howStepNum}>02</Text>
-              <Text style={s.howStepName}>{config.howItWorks?.step2Title || 'Achar suas fotos'}</Text>
-              <Text style={s.howStepDesc}>
-                {config.howItWorks?.step2Desc || 'Use o reconhecimento facial rápido.'}
-              </Text>
+              <Text style={[s.howStepNum, isMobile && s.howStepNumMobile]}>02</Text>
+              <View style={isMobile && s.howStepTextGroupMobile}>
+                <Text style={[s.howStepName, isMobile && s.howStepNameMobile]}>{config.howItWorks?.step2Title || 'Achar suas fotos'}</Text>
+                <Text style={[s.howStepDesc, isMobile && s.howStepDescMobile]}>
+                  {config.howItWorks?.step2Desc || 'Use o reconhecimento facial rápido.'}
+                </Text>
+              </View>
             </View>
 
-            {/* Step 3 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
               <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
-                <ShoppingCart size={18} color={primaryColor} />
+                <ShoppingCart size={isMobile ? 16 : 18} color={primaryColor} />
               </View>
-              <Text style={s.howStepNum}>03</Text>
-              <Text style={s.howStepName}>{config.howItWorks?.step3Title || 'Escolha e compre'}</Text>
-              <Text style={s.howStepDesc}>
-                {config.howItWorks?.step3Desc || 'Selecione as fotos e pague via PIX ou Cartão.'}
-              </Text>
+              <Text style={[s.howStepNum, isMobile && s.howStepNumMobile]}>03</Text>
+              <View style={isMobile && s.howStepTextGroupMobile}>
+                <Text style={[s.howStepName, isMobile && s.howStepNameMobile]}>{config.howItWorks?.step3Title || 'Escolha e compre'}</Text>
+                <Text style={[s.howStepDesc, isMobile && s.howStepDescMobile]}>
+                  {config.howItWorks?.step3Desc || 'Selecione as fotos e pague via PIX ou Cartão.'}
+                </Text>
+              </View>
             </View>
 
-            {/* Step 4 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
               <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
-                <Download size={18} color={primaryColor} />
+                <Download size={isMobile ? 16 : 18} color={primaryColor} />
               </View>
-              <Text style={s.howStepNum}>04</Text>
-              <Text style={s.howStepName}>{config.howItWorks?.step4Title || 'Baixe e compartilhe'}</Text>
-              <Text style={s.howStepDesc}>
-                {config.howItWorks?.step4Desc || 'Após o pagamento receba seus arquivos direto no Whatsapp.'}
-              </Text>
+              <Text style={[s.howStepNum, isMobile && s.howStepNumMobile]}>04</Text>
+              <View style={isMobile && s.howStepTextGroupMobile}>
+                <Text style={[s.howStepName, isMobile && s.howStepNameMobile]}>{config.howItWorks?.step4Title || 'Baixe e compartilhe'}</Text>
+                <Text style={[s.howStepDesc, isMobile && s.howStepDescMobile]}>
+                  {config.howItWorks?.step4Desc || 'Após o pagamento receba seus arquivos direto no Whatsapp.'}
+                </Text>
+              </View>
             </View>
-          </ScrollView>
+          </View>
         </View>
       </View>
 
@@ -969,11 +975,8 @@ const s = StyleSheet.create({
     gap: 20,
   },
   howStepsRowMobile: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
+    flexDirection: 'column',
     gap: 12,
-    paddingBottom: 16,
-    paddingHorizontal: 8,
   },
   howStepItem: {
     flex: 1,
@@ -982,11 +985,19 @@ const s = StyleSheet.create({
     gap: 6,
   },
   howStepItemMobile: {
-    width: 140, // fix width so they don't squish and scroll nicely
-    flexDirection: 'column',
-    textAlign: 'center',
+    flexDirection: 'row',
+    textAlign: 'left',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  howStepTextGroupMobile: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
   },
   howStepCircle: {
     width: 44,
@@ -1006,11 +1017,22 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
   },
+  howStepNameMobile: {
+    fontSize: 13,
+  },
   howStepDesc: {
     fontSize: 12,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  howStepDescMobile: {
+    textAlign: 'left',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  howStepNumMobile: {
+    fontSize: 13,
   },
 
   // Galerias em Destaque
