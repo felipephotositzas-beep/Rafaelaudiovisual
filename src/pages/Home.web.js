@@ -317,7 +317,7 @@ export default function Home() {
                 <Text style={s.btnPromoActionText}>
                   {banner.buttonText || 'Acessar Galeria'}
                 </Text>
-                <ArrowRight size={14} color="#FFFFFF" />
+                <ArrowRight size={16} color="#FFFFFF" strokeWidth={2.5} />
               </View>
             </View>
           </TouchableOpacity>
@@ -759,6 +759,26 @@ const s = StyleSheet.create({
   promoBannerSubtitle: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  btnPromoAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  btnPromoActionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 
   // Hero Section
