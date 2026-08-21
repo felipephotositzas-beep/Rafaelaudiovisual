@@ -15,9 +15,6 @@ import {
   Send,
   Users,
   MessageCircle,
-  Play,
-  Pause,
-  RotateCcw,
   CheckCircle2,
   AlertCircle,
   Download,
@@ -26,24 +23,15 @@ import {
   Trash2,
   ExternalLink,
   ArrowLeft,
-  Sparkles,
-  Clock,
-  FileText,
-  CheckSquare,
-  Square,
-  Smartphone,
-  Copy,
-  Layers,
   Settings,
-  Flame,
   ShieldCheck,
   Zap,
   RefreshCw,
-  Edit3,
-  Image as ImageIcon,
-  Link2,
+  CheckSquare,
+  Square,
+  Smartphone,
   Check,
-  Sliders,
+  Lock,
 } from 'lucide-react-native';
 import BrandLogo from '../components/BrandLogo';
 import { useAdminConfig } from '../context/AdminConfigContext';
@@ -52,39 +40,54 @@ import { fetchAllEvents } from '../utils/api';
 
 const API_BASE = 'https://rafaelpublicado.com.br/api';
 
-const DEFAULT_TEMPLATES = [
+const OFFICIAL_META_TEMPLATES = [
   {
-    id: 'fotos_publicadas',
-    title: '📸 Fotos Publicadas',
+    id: '1',
     name: 'fotos_evento_publicadas',
-    headerType: 'IMAGE',
-    text: 'Olá {nome}! 📸 Suas fotos do evento *{evento}* já estão disponíveis em alta resolução!\n\n👉 Encontre suas fotos pelo reconhecimento facial:\n{link_evento}\n\nGaranta suas lembranças hoje mesmo!',
-    buttonText: 'Ver Minhas Fotos 📸',
+    displayName: '📸 Fotos Publicadas (com Capa e Botão)',
+    category: 'MARKETING',
+    language: 'pt_BR',
+    header_type: 'IMAGE',
+    header_content: 'https://rafaelpublicado.com.br/assets/logo.png',
+    body_text: 'Olá {{1}}! 📸 Suas fotos do evento *{{2}}* já estão disponíveis em alta resolução no site oficial! Clique no botão abaixo para encontrar suas fotos em segundos pelo reconhecimento facial:',
+    footer_text: 'Rafael Publicado Audiovisual • Atendimento oficial',
+    buttons: [
+      { type: 'URL', text: 'Ver Minhas Fotos 📸', url: 'https://rafaelpublicado.com.br/evento/{{1}}' },
+      { type: 'QUICK_REPLY', text: 'Falar no Suporte 💬' }
+    ],
+    meta_status: 'APPROVED',
   },
   {
-    id: 'novo_evento',
-    title: '🏁 Novo Evento',
+    id: '2',
     name: 'novo_evento_disponivel',
-    headerType: 'NONE',
-    text: 'Olá {nome}! 🏁 Confirmamos a cobertura oficial de fotos no evento *{evento}*!\n\nAcesse o site para acompanhar todas as fotos:\nhttps://rafaelpublicado.com.br',
-    buttonText: 'Acessar Site 🌐',
+    displayName: '🏁 Novo Evento Confirmado',
+    category: 'UTILITY',
+    language: 'pt_BR',
+    header_type: 'TEXT',
+    header_content: 'Cobertura Oficial Confirmada 🏁',
+    body_text: 'Olá {{1}}, tudo bem? Confirmamos a cobertura oficial de fotos no próximo evento *{{2}}*! Acompanhe as novidades e garanta seu registro.',
+    footer_text: 'Rafael Publicado Audiovisual',
+    buttons: [
+      { type: 'URL', text: 'Acessar Site Oficial 🌐', url: 'https://rafaelpublicado.com.br' }
+    ],
+    meta_status: 'APPROVED',
   },
   {
-    id: 'cupom_desconto',
-    title: '🎟️ Cupom de Desconto',
+    id: '3',
     name: 'cupom_desconto_fotos',
-    headerType: 'NONE',
-    text: 'Olá {nome}! 🎉 Preparamos um desconto exclusivo para você adquirir o pacote de fotos do evento *{evento}*!\n\nAcesse o link e aproveite a condição especial:\n{link_evento}',
-    buttonText: 'Garantir Desconto 🎟️',
-  },
-  {
-    id: 'personalizado',
-    title: '✍️ Texto Livre',
-    name: 'mensagem_custom',
-    headerType: 'NONE',
-    text: 'Olá {nome}! Passando para compartilhar as fotos do evento {evento}:\n{link_evento}',
-    buttonText: 'Abrir Galeria',
-  },
+    displayName: '🎟️ Cupom de Desconto Especial',
+    category: 'MARKETING',
+    language: 'pt_BR',
+    header_type: 'TEXT',
+    header_content: 'Desconto Especial de Fotos 🎟️',
+    body_text: 'Olá {{1}}! Preparamos um desconto progressivo exclusivo para você garantir todas as suas fotos do evento *{{2}}*. Acesse pelo link abaixo e aplique seu desconto:',
+    footer_text: 'Rafael Publicado Audiovisual',
+    buttons: [
+      { type: 'URL', text: 'Garantir Desconto 🎟️', url: 'https://rafaelpublicado.com.br/evento/{{1}}' },
+      { type: 'QUICK_REPLY', text: 'Tirar Dúvidas' }
+    ],
+    meta_status: 'APPROVED',
+  }
 ];
 
 export default function BulkMessage() {
@@ -99,14 +102,14 @@ export default function BulkMessage() {
   const [showPasteBox, setShowPasteBox] = useState(false);
   const [loadingLeads, setLoadingLeads] = useState(false);
 
-  // Eventos & Seleção
+  // Eventos Cadastrados
   const [eventsList, setEventsList] = useState([]);
   const [selectedEventId, setSelectedEventId] = useState('');
 
-  // Modelo Selecionado & Mensagem
-  const [selectedTemplateId, setSelectedTemplateId] = useState('fotos_publicadas');
-  const [messageText, setMessageText] = useState(DEFAULT_TEMPLATES[0].text);
-  const [headerImageUrl, setHeaderImageUrl] = useState('');
+  // Modelos Oficiais da Meta
+  const [metaTemplates, setMetaTemplates] = useState(OFFICIAL_META_TEMPLATES);
+  const [selectedTemplate, setSelectedTemplate] = useState(OFFICIAL_META_TEMPLATES[0]);
+  const [customHeaderImg, setCustomHeaderImg] = useState('');
 
   // Configuração & Credenciais Meta
   const [metaToken, setMetaToken] = useState('');
@@ -114,23 +117,19 @@ export default function BulkMessage() {
   const [wabaId, setWabaId] = useState('');
   const [hasMetaApi, setHasMetaApi] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [syncingMeta, setSyncingMeta] = useState(false);
 
-  // Envio & Fila
-  const [delaySeconds, setDelaySeconds] = useState(5);
-  const [isSending, setIsSending] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [sentCount, setSentCount] = useState(0);
+  // Teste & Disparo
   const [testPhone, setTestPhone] = useState('5599991297693');
   const [isSendingTest, setIsSendingTest] = useState(false);
-
-  const sendingRef = useRef(false);
-  const pausedRef = useRef(false);
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+  const [sentSuccessCount, setSentSuccessCount] = useState(0);
 
   useEffect(() => {
     loadEvents();
     loadLeadsFromSite();
     loadMetaConfig();
+    loadMetaTemplates();
   }, []);
 
   const loadEvents = async () => {
@@ -142,7 +141,7 @@ export default function BulkMessage() {
         setEventsList(evs);
         if (evs.length > 0) {
           setSelectedEventId(evs[0].id);
-          if (evs[0].cover_url) setHeaderImageUrl(evs[0].cover_url);
+          if (evs[0].cover_url) setCustomHeaderImg(evs[0].cover_url);
         }
       }
     } catch {}
@@ -181,6 +180,19 @@ export default function BulkMessage() {
     } catch {}
   };
 
+  const loadMetaTemplates = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/meta/templates`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.templates && data.templates.length > 0) {
+          setMetaTemplates(data.templates);
+          setSelectedTemplate(data.templates[0]);
+        }
+      }
+    } catch {}
+  };
+
   const handleSaveMetaConfig = async () => {
     try {
       const res = await fetch(`${API_BASE}/meta/config`, {
@@ -192,14 +204,41 @@ export default function BulkMessage() {
           access_token: metaToken,
         }),
       });
+      const data = await res.json();
       if (res.ok) {
         setHasMetaApi(true);
         setShowSettings(false);
-        alert('Credenciais da Meta salvas com sucesso!');
+        loadMetaTemplates();
+        alert(data.message || 'Credenciais da Meta salvas com sucesso!');
       }
     } catch {
       alert('Erro ao salvar credenciais.');
     }
+  };
+
+  const handleSyncTemplates = async () => {
+    setSyncingMeta(true);
+    try {
+      const res = await fetch(`${API_BASE}/meta/sync-templates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          waba_id: wabaId,
+          access_token: metaToken,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.templates) {
+        setMetaTemplates(data.templates);
+        if (data.templates.length > 0) setSelectedTemplate(data.templates[0]);
+        alert(data.message || 'Modelos Meta sincronizados com sucesso!');
+      } else {
+        alert(data.error || 'Erro ao sincronizar com a Meta.');
+      }
+    } catch (err) {
+      alert(`Falha na conexão: ${err.message}`);
+    }
+    setSyncingMeta(false);
   };
 
   const cleanPhoneNumber = (phone) => {
@@ -229,32 +268,23 @@ export default function BulkMessage() {
 
   const currentEvent = getSelectedEventObj();
 
-  // Compila a mensagem final substituindo variáveis
-  const compileMessage = (templateText, contactName = 'Cliente') => {
-    const ev = currentEvent;
-    const eventName = ev.name || 'Evento';
-    const eventLink = `https://rafaelpublicado.com.br/evento/${ev.id || ''}`;
+  // Substituição dinâmica das variáveis Meta {{1}}, {{2}}, {{3}}
+  const compileMetaMessage = (bodyText, contactName = 'Cliente') => {
+    const eventName = currentEvent.name || 'Evento';
+    const eventLink = `https://rafaelpublicado.com.br/evento/${currentEvent.id || ''}`;
     const name = contactName && contactName.trim() ? contactName.trim() : 'Amigo(a)';
 
-    return (templateText || '')
-      .replace(/{nome}/g, name)
-      .replace(/{evento}/g, eventName)
-      .replace(/{link_evento}/g, eventLink)
+    return (bodyText || '')
       .replace(/{{1}}/g, name)
       .replace(/{{2}}/g, eventName)
       .replace(/{{3}}/g, eventLink);
-  };
-
-  const handleSelectTemplate = (tmpl) => {
-    setSelectedTemplateId(tmpl.id);
-    setMessageText(tmpl.text);
   };
 
   // Adicionar contato manual
   const handleAddManualContact = () => {
     const raw = cleanPhoneNumber(newPhone);
     if (raw.length < 10) {
-      alert('Informe um número de WhatsApp com DDD.');
+      alert('Informe um número de WhatsApp válido com DDD.');
       return;
     }
 
@@ -272,7 +302,7 @@ export default function BulkMessage() {
     setNewName('');
   };
 
-  // Colar lista de números
+  // Colar múltiplos números
   const handleImportPasted = () => {
     if (!pasteText.trim()) return;
     const lines = pasteText.split(/[\n,;]+/);
@@ -310,15 +340,15 @@ export default function BulkMessage() {
       setShowPasteBox(false);
       alert(`${newItems.length} contatos adicionados!`);
     } else {
-      alert('Nenhum número válido encontrado no texto.');
+      alert('Nenhum número válido encontrado.');
     }
   };
 
-  // Enviar Teste Individual
-  const handleSendTest = async () => {
+  // Disparo de Teste Individual
+  const handleSendTestMessage = async () => {
     const raw = cleanPhoneNumber(testPhone);
     if (raw.length < 10) {
-      alert('Informe seu WhatsApp com DDD.');
+      alert('Informe seu WhatsApp com DDD para testar.');
       return;
     }
 
@@ -330,14 +360,15 @@ export default function BulkMessage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaign_title: 'Teste Individual',
-            template_name: selectedTemplate?.name || 'fotos_evento_publicadas',
-            language_code: 'pt_BR',
+            campaign_title: 'Teste Individual Meta',
+            template_name: selectedTemplate?.name,
+            language_code: selectedTemplate?.language || 'pt_BR',
             event_id: selectedEventId,
             recipients: [
               {
                 phone: raw,
                 name: 'Fotógrafo',
+                headerImage: customHeaderImg || currentEvent.cover_url,
                 bodyParams: ['Fotógrafo', currentEvent.name || 'Evento', `https://rafaelpublicado.com.br/evento/${currentEvent.id || ''}`],
               },
             ],
@@ -345,112 +376,102 @@ export default function BulkMessage() {
         });
         const data = await res.json();
         if (res.ok && data.sentSuccess > 0) {
-          alert('Mensagem de teste enviada para o seu WhatsApp!');
+          alert('Mensagem oficial da Meta enviada com sucesso para seu WhatsApp!');
         } else {
-          alert('Erro ao enviar teste pela Meta API.');
+          alert(`Erro Meta: ${data.error || 'Verifique as credenciais da API'}`);
         }
-      } catch {
-        alert('Erro de conexão ao enviar teste.');
+      } catch (err) {
+        alert(`Erro de envio: ${err.message}`);
       }
     } else {
-      const fullMsg = compileMessage(messageText, 'Fotógrafo');
-      const url = `https://api.whatsapp.com/send?phone=${raw}&text=${encodeURIComponent(fullMsg)}`;
+      // Disparo direto Web
+      const fullMsg = compileMetaMessage(selectedTemplate?.body_text, 'Fotógrafo');
+      const footer = selectedTemplate?.footer_text ? `\n\n_${selectedTemplate.footer_text}_` : '';
+      const encoded = encodeURIComponent(`${fullMsg}${footer}`);
+      const url = `https://api.whatsapp.com/send?phone=${raw}&text=${encoded}`;
       if (typeof window !== 'undefined') window.open(url, '_blank');
     }
 
     setIsSendingTest(false);
   };
 
-  // Iniciar Disparo em Massa
-  const startBroadcast = async () => {
+  // Disparo em Massa Oficial Meta
+  const startMetaBroadcast = async () => {
     const selected = contacts.filter((c) => c.selected && c.status !== 'sent');
     if (selected.length === 0) {
       alert('Selecione pelo menos 1 contato com status pendente.');
       return;
     }
 
-    // Se tiver Meta API configurada:
+    setIsSendingBroadcast(true);
+
     if (hasMetaApi) {
-      setIsSending(true);
       try {
         const res = await fetch(`${API_BASE}/meta/send-template-broadcast`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            campaign_title: `Disparo - ${currentEvent.name || 'Evento'}`,
-            template_name: selectedTemplate?.name || 'fotos_evento_publicadas',
-            language_code: 'pt_BR',
+            campaign_title: `Disparo Meta - ${currentEvent.name || 'Evento'}`,
+            template_name: selectedTemplate?.name,
+            language_code: selectedTemplate?.language || 'pt_BR',
             event_id: selectedEventId,
             recipients: selected.map((c) => ({
               phone: c.rawPhone,
               name: c.name,
+              headerImage: customHeaderImg || currentEvent.cover_url,
               bodyParams: [c.name || 'Cliente', currentEvent.name || 'Evento', `https://rafaelpublicado.com.br/evento/${currentEvent.id || ''}`],
             })),
           }),
         });
+
         const data = await res.json();
+
         if (res.ok && data.success) {
-          setSentCount((prev) => prev + (data.sentSuccess || 0));
+          setSentSuccessCount((prev) => prev + (data.sentSuccess || 0));
           setContacts((prev) =>
             prev.map((c) => {
               const resObj = (data.results || []).find((r) => r.phone === c.rawPhone);
               return resObj ? { ...c, status: resObj.status === 'sent' ? 'sent' : 'error' } : c;
             })
           );
-          alert(`Disparo concluído com sucesso! ${data.sentSuccess} mensagens enviadas via Meta API.`);
+          alert(`Disparo Oficial Meta Concluído! ${data.sentSuccess} mensagens enviadas via Meta Cloud API.`);
         } else {
-          alert('Erro ao disparar via Meta API.');
+          alert(`Erro Meta: ${data.error || 'Verifique as credenciais da API'}`);
         }
       } catch (err) {
-        alert(`Erro: ${err.message}`);
+        alert(`Erro de conexão: ${err.message}`);
       }
-      setIsSending(false);
-      return;
-    }
-
-    // Disparo Assistido Fila Web:
-    setIsSending(true);
-    setIsPaused(false);
-    sendingRef.current = true;
-    pausedRef.current = false;
-
-    let sent = sentCount;
-
-    for (let i = 0; i < selected.length; i++) {
-      if (!sendingRef.current) break;
-      while (pausedRef.current) {
-        await new Promise((r) => setTimeout(r, 500));
-        if (!sendingRef.current) break;
-      }
-      if (!sendingRef.current) break;
-
-      const current = selected[i];
-      setCurrentIndex(i + 1);
-
-      try {
-        const fullMsg = compileMessage(messageText, current.name);
-        const url = `https://api.whatsapp.com/send?phone=${current.rawPhone}&text=${encodeURIComponent(fullMsg)}`;
+    } else {
+      // Disparo em fila Web caso ainda não tenha inserido o token
+      for (let i = 0; i < selected.length; i++) {
+        const current = selected[i];
+        const fullMsg = compileMetaMessage(selectedTemplate?.body_text, current.name);
+        const footer = selectedTemplate?.footer_text ? `\n\n_${selectedTemplate.footer_text}_` : '';
+        const url = `https://api.whatsapp.com/send?phone=${current.rawPhone}&text=${encodeURIComponent(fullMsg + footer)}`;
         if (typeof window !== 'undefined') window.open(url, '_blank');
 
         setContacts((prev) =>
           prev.map((c) => (c.id === current.id ? { ...c, status: 'sent' } : c))
         );
-        sent++;
-        setSentCount(sent);
-      } catch {}
-
-      if (i < selected.length - 1 && sendingRef.current) {
-        await new Promise((r) => setTimeout(r, delaySeconds * 1000));
+        await new Promise((r) => setTimeout(r, 4000));
       }
+      alert('Disparos finalizados com sucesso!');
     }
 
-    setIsSending(false);
-    sendingRef.current = false;
-    alert(`Disparos finalizados! ${sent} mensagens processadas.`);
+    setIsSendingBroadcast(false);
   };
 
-  const selectedTemplate = DEFAULT_TEMPLATES.find((t) => t.id === selectedTemplateId) || DEFAULT_TEMPLATES[0];
   const selectedCount = contacts.filter((c) => c.selected).length;
+
+  // Botões do template selecionado
+  let parsedButtons = [];
+  try {
+    if (selectedTemplate?.buttons) {
+      parsedButtons = typeof selectedTemplate.buttons === 'string'
+        ? JSON.parse(selectedTemplate.buttons)
+        : selectedTemplate.buttons;
+    }
+  } catch {}
 
   return (
     <View style={styles.page}>
@@ -459,22 +480,36 @@ export default function BulkMessage() {
         <View style={styles.topbarInner}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <BrandLogo size="md" />
-            <View style={styles.badgeStatus}>
-              <View style={[styles.dotStatus, { backgroundColor: hasMetaApi ? '#16A34A' : '#F59E0B' }]} />
-              <Text style={styles.badgeStatusText}>
-                {hasMetaApi ? 'META API CONECTADA' : 'DISPARO DIRETO'}
-              </Text>
+            <View style={styles.metaBadge}>
+              <Zap size={13} color="#0084FF" />
+              <Text style={styles.metaBadgeText}>META WHATSAPP CLOUD API</Text>
             </View>
           </View>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {hasMetaApi && (
+              <TouchableOpacity
+                style={styles.btnSyncTop}
+                onPress={handleSyncTemplates}
+                disabled={syncingMeta}
+                activeOpacity={0.8}
+              >
+                <RefreshCw size={13} color="#0084FF" />
+                <Text style={styles.btnSyncTopText}>
+                  {syncingMeta ? 'Sincronizando...' : 'Puxar Templates da Meta'}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
               style={styles.btnIconHeader}
               onPress={() => setShowSettings(!showSettings)}
               activeOpacity={0.8}
             >
-              <Settings size={15} color="#475569" />
-              <Text style={styles.btnIconHeaderText}>Configurar Token</Text>
+              <Settings size={14} color="#475569" />
+              <Text style={styles.btnIconHeaderText}>
+                {hasMetaApi ? 'Credenciais Conectadas ✓' : 'Inserir Token Meta'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -483,7 +518,7 @@ export default function BulkMessage() {
               activeOpacity={0.8}
             >
               <ArrowLeft size={14} color="#0F172A" />
-              <Text style={styles.btnBackText}>Voltar ao Painel</Text>
+              <Text style={styles.btnBackText}>Painel Admin</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -491,12 +526,12 @@ export default function BulkMessage() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         
-        {/* Painel Flutuante de Configuração Meta */}
+        {/* Painel de Configuração Meta API (Abre apenas se solicitado) */}
         {showSettings && (
           <View style={styles.settingsModal}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A' }}>
-                Credenciais da Meta WhatsApp Cloud API
+                Credenciais Oficiais da Meta (WhatsApp Business Cloud API)
               </Text>
               <TouchableOpacity onPress={() => setShowSettings(false)}>
                 <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '700' }}>Fechar ✕</Text>
@@ -506,17 +541,17 @@ export default function BulkMessage() {
             <View style={{ gap: 10 }}>
               <TextInput
                 style={styles.inputMinimal}
-                placeholder="ID do Número de Telefone (Phone Number ID)"
-                placeholderTextColor="#94A3B8"
-                value={phoneId}
-                onChangeText={setPhoneId}
-              />
-              <TextInput
-                style={styles.inputMinimal}
                 placeholder="ID da Conta WhatsApp Business (WABA ID)"
                 placeholderTextColor="#94A3B8"
                 value={wabaId}
                 onChangeText={setWabaId}
+              />
+              <TextInput
+                style={styles.inputMinimal}
+                placeholder="ID do Número de Telefone (Phone Number ID)"
+                placeholderTextColor="#94A3B8"
+                value={phoneId}
+                onChangeText={setPhoneId}
               />
               <TextInput
                 style={[styles.inputMinimal, { height: 60 }]}
@@ -533,7 +568,7 @@ export default function BulkMessage() {
                 activeOpacity={0.88}
               >
                 <Check size={15} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Salvar Credenciais</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Salvar e Sincronizar Modelos</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -554,8 +589,8 @@ export default function BulkMessage() {
                     disabled={loadingLeads}
                     activeOpacity={0.8}
                   >
-                    <Users size={12} color="#006BD6" />
-                    <Text style={[styles.btnActionText, { color: '#006BD6' }]}>
+                    <Users size={12} color="#0084FF" />
+                    <Text style={[styles.btnActionText, { color: '#0084FF' }]}>
                       {loadingLeads ? 'Puxando...' : 'Puxar Leads'}
                     </Text>
                   </TouchableOpacity>
@@ -628,7 +663,7 @@ export default function BulkMessage() {
                   }}
                 >
                   {contacts.length > 0 && contacts.every((c) => c.selected) ? (
-                    <CheckSquare size={15} color="#006BD6" />
+                    <CheckSquare size={15} color="#0084FF" />
                   ) : (
                     <Square size={15} color="#94A3B8" />
                   )}
@@ -654,7 +689,7 @@ export default function BulkMessage() {
                   <View style={{ padding: 28, alignItems: 'center' }}>
                     <Users size={28} color="#CBD5E1" />
                     <Text style={{ marginTop: 8, fontSize: 12, color: '#94A3B8' }}>
-                      Nenhum contato adicionado. Puxe os leads do site ou cole números acima.
+                      Nenhum contato na lista. Puxe os leads do site ou cole números acima.
                     </Text>
                   </View>
                 ) : (
@@ -669,7 +704,7 @@ export default function BulkMessage() {
                         style={{ padding: 4 }}
                       >
                         {c.selected ? (
-                          <CheckSquare size={15} color="#006BD6" />
+                          <CheckSquare size={15} color="#0084FF" />
                         ) : (
                           <Square size={15} color="#CBD5E1" />
                         )}
@@ -701,13 +736,13 @@ export default function BulkMessage() {
             </View>
           </View>
 
-          {/* ════════ COLUNA 2: MENSAGEM & PRÉVIA AO VIVO ════════ */}
+          {/* ════════ COLUNA 2: MODELOS META OFICIAIS & PREVIEW ════════ */}
           <View style={styles.colRight}>
             <View style={styles.cardMinimal}>
               
               {/* Evento Alvo */}
               <View style={{ marginBottom: 14 }}>
-                <Text style={styles.sectionLabel}>Evento das Fotos:</Text>
+                <Text style={styles.sectionLabel}>Evento Vinculado:</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 6 }}>
                   <View style={{ flexDirection: 'row', gap: 6 }}>
                     {eventsList.map((ev) => {
@@ -718,7 +753,7 @@ export default function BulkMessage() {
                           style={[styles.pillEvent, isSel && styles.pillEventActive]}
                           onPress={() => {
                             setSelectedEventId(ev.id);
-                            if (ev.cover_url) setHeaderImageUrl(ev.cover_url);
+                            if (ev.cover_url) setCustomHeaderImg(ev.cover_url);
                           }}
                           activeOpacity={0.8}
                         >
@@ -732,42 +767,50 @@ export default function BulkMessage() {
                 </ScrollView>
               </View>
 
-              {/* Seletor de Templates Minimalista */}
+              {/* Seletor de Modelos Aprovados da Meta */}
               <View style={{ marginBottom: 14 }}>
-                <Text style={styles.sectionLabel}>Modelo da Mensagem:</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                  {DEFAULT_TEMPLATES.map((tmpl) => {
-                    const isSel = selectedTemplateId === tmpl.id;
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.sectionLabel}>Modelos Aprovados na Meta (HSM):</Text>
+                  <View style={styles.badgeMetaApproved}>
+                    <ShieldCheck size={11} color="#16A34A" />
+                    <Text style={styles.badgeMetaApprovedText}>APROVADO META</Text>
+                  </View>
+                </View>
+
+                <View style={{ gap: 6, marginTop: 6 }}>
+                  {metaTemplates.map((tmpl) => {
+                    const isSel = selectedTemplate?.id === tmpl.id;
                     return (
                       <TouchableOpacity
                         key={tmpl.id}
-                        style={[styles.pillTemplate, isSel && styles.pillTemplateActive]}
-                        onPress={() => handleSelectTemplate(tmpl)}
+                        style={[styles.templateMetaPill, isSel && styles.templateMetaPillActive]}
+                        onPress={() => setSelectedTemplate(tmpl)}
                         activeOpacity={0.8}
                       >
-                        <Text style={[styles.pillTemplateText, isSel && styles.pillTemplateTextActive]}>
-                          {tmpl.title}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={[styles.templateMetaPillTitle, isSel && styles.templateMetaPillTitleActive]}>
+                            {tmpl.displayName || tmpl.name}
+                          </Text>
+                          <Text style={styles.templateMetaCategory}>{tmpl.category}</Text>
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
               </View>
 
-              {/* Editor do Texto */}
+              {/* Texto do Modelo Meta (Bloqueado para edição livre conforme norma da Meta) */}
               <View style={{ marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={styles.sectionLabel}>Texto da Mensagem:</Text>
-                  <Text style={{ fontSize: 11, color: '#94A3B8' }}>Variáveis: {'{nome}'}, {'{evento}'}, {'{link_evento}'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Lock size={12} color="#64748B" />
+                  <Text style={styles.sectionLabel}>Texto Oficial do Modelo:</Text>
                 </View>
 
-                <TextInput
-                  style={[styles.inputMinimal, { height: 95, textAlignVertical: 'top', marginTop: 4 }]}
-                  multiline
-                  value={messageText}
-                  onChangeText={setMessageText}
-                  placeholder="Escreva a mensagem aqui..."
-                />
+                <View style={styles.lockedTemplateBox}>
+                  <Text style={styles.lockedTemplateText}>
+                    {selectedTemplate?.body_text}
+                  </Text>
+                </View>
               </View>
 
               {/* ─── PRÉVIA OFICIAL WHATSAPP MINIMALISTA ─── */}
@@ -775,41 +818,50 @@ export default function BulkMessage() {
                 <View style={styles.previewHeader}>
                   <Smartphone size={13} color="#16A34A" />
                   <Text style={{ fontSize: 11, fontWeight: '700', color: '#16A34A' }}>
-                    Prévia Oficial no WhatsApp
+                    Pré-visualização Oficial no WhatsApp
                   </Text>
                 </View>
 
                 <View style={styles.previewBubble}>
-                  {/* Foto da Capa do Evento */}
-                  {selectedTemplate.headerType === 'IMAGE' && (
+                  {/* Foto da Capa do Evento no Header */}
+                  {selectedTemplate?.header_type === 'IMAGE' && (
                     <View style={styles.previewImgBox}>
                       <Image
-                        source={{ uri: headerImageUrl || currentEvent.cover_url || 'https://rafaelpublicado.com.br/assets/logo.png' }}
+                        source={{ uri: customHeaderImg || currentEvent.cover_url || 'https://rafaelpublicado.com.br/assets/logo.png' }}
                         style={styles.previewImg}
                         resizeMode="cover"
                       />
                     </View>
                   )}
 
-                  {/* Texto Formatado */}
+                  {/* Header de Texto */}
+                  {selectedTemplate?.header_type === 'TEXT' && (
+                    <Text style={styles.previewHeaderText}>
+                      {selectedTemplate.header_content || 'Aviso Oficial'}
+                    </Text>
+                  )}
+
+                  {/* Texto com Variáveis Resolvidas */}
                   <Text style={styles.previewText}>
-                    {compileMessage(messageText, 'Rafael')}
+                    {compileMetaMessage(selectedTemplate?.body_text, 'Rafael Costa')}
                   </Text>
 
-                  {/* Rodapé e Checkmark */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                    <Text style={{ fontSize: 10, color: '#64748B' }}>Rafael Publicado Audiovisual</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <Text style={{ fontSize: 9, color: '#94A3B8' }}>14:30</Text>
-                      <CheckCircle2 size={10} color="#0284C7" />
-                    </View>
-                  </View>
+                  {/* Rodapé Oficial */}
+                  {selectedTemplate?.footer_text && (
+                    <Text style={styles.previewFooterText}>
+                      {selectedTemplate.footer_text}
+                    </Text>
+                  )}
 
-                  {/* Botão Interativo */}
-                  {selectedTemplate.buttonText && (
+                  {/* Botões Oficiais da Meta */}
+                  {parsedButtons.length > 0 && (
                     <View style={styles.previewButtonRow}>
-                      <ExternalLink size={12} color="#006BD6" />
-                      <Text style={styles.previewButtonText}>{selectedTemplate.buttonText}</Text>
+                      {parsedButtons.map((btn, bIdx) => (
+                        <View key={bIdx} style={styles.previewBtnItem}>
+                          <ExternalLink size={11} color="#0084FF" />
+                          <Text style={styles.previewButtonText}>{btn.text}</Text>
+                        </View>
+                      ))}
                     </View>
                   )}
                 </View>
@@ -826,7 +878,7 @@ export default function BulkMessage() {
                 />
                 <TouchableOpacity
                   style={styles.btnTest}
-                  onPress={handleSendTest}
+                  onPress={handleSendTestMessage}
                   disabled={isSendingTest}
                   activeOpacity={0.85}
                 >
@@ -837,66 +889,25 @@ export default function BulkMessage() {
                 </TouchableOpacity>
               </View>
 
-              {/* ─── BOTÃO PRINCIPAL DE DISPARO ─── */}
+              {/* ─── BOTÃO PRINCIPAL DE DISPARO VIA META ─── */}
               <View style={{ marginTop: 16 }}>
-                {!isSending ? (
-                  <TouchableOpacity
-                    style={styles.btnStartBroadcast}
-                    onPress={startBroadcast}
-                    activeOpacity={0.88}
-                  >
-                    <Zap size={18} color="#FFFFFF" />
-                    <Text style={styles.btnStartBroadcastText}>
-                      DISPARAR PARA {selectedCount} CONTATOS
-                    </Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={{ gap: 8 }}>
-                    <View style={styles.progressBox}>
-                      <ActivityIndicator size="small" color="#16A34A" />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534' }}>
-                        Enviando mensagem {currentIndex} de {selectedCount}...
+                <TouchableOpacity
+                  style={styles.btnStartBroadcast}
+                  onPress={startMetaBroadcast}
+                  disabled={isSendingBroadcast}
+                  activeOpacity={0.88}
+                >
+                  {isSendingBroadcast ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Zap size={18} color="#FFFFFF" />
+                      <Text style={styles.btnStartBroadcastText}>
+                        DISPARAR VIA META CLOUD API ({selectedCount} CONTATOS)
                       </Text>
-                    </View>
-
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      {isPaused ? (
-                        <TouchableOpacity
-                          style={[styles.btnCtrl, { backgroundColor: '#16A34A' }]}
-                          onPress={() => {
-                            setIsPaused(false);
-                            pausedRef.current = false;
-                          }}
-                        >
-                          <Play size={14} color="#FFFFFF" />
-                          <Text style={styles.btnCtrlText}>Continuar</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          style={[styles.btnCtrl, { backgroundColor: '#D97706' }]}
-                          onPress={() => {
-                            setIsPaused(true);
-                            pausedRef.current = true;
-                          }}
-                        >
-                          <Pause size={14} color="#FFFFFF" />
-                          <Text style={styles.btnCtrlText}>Pausar</Text>
-                        </TouchableOpacity>
-                      )}
-
-                      <TouchableOpacity
-                        style={[styles.btnCtrl, { backgroundColor: '#DC2626' }]}
-                        onPress={() => {
-                          setIsSending(false);
-                          sendingRef.current = false;
-                        }}
-                      >
-                        <RotateCcw size={14} color="#FFFFFF" />
-                        <Text style={styles.btnCtrlText}>Cancelar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
 
             </View>
@@ -935,25 +946,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  badgeStatus: {
+  metaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
-  dotStatus: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  badgeStatusText: {
+  metaBadgeText: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#475569',
+    color: '#0084FF',
     letterSpacing: 0.3,
+  },
+  btnSyncTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  btnSyncTopText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0084FF',
   },
   btnIconHeader: {
     flexDirection: 'row',
@@ -1008,7 +1032,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#006BD6',
+    backgroundColor: '#0084FF',
     paddingVertical: 10,
     borderRadius: 8,
   },
@@ -1079,7 +1103,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   btnImportPaste: {
-    backgroundColor: '#006BD6',
+    backgroundColor: '#0084FF',
     paddingVertical: 6,
     borderRadius: 6,
     alignItems: 'center',
@@ -1093,7 +1117,7 @@ const styles = StyleSheet.create({
   btnAdd: {
     width: 36,
     height: 36,
-    backgroundColor: '#006BD6',
+    backgroundColor: '#0084FF',
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1152,7 +1176,7 @@ const styles = StyleSheet.create({
   },
   pillEventActive: {
     backgroundColor: '#EFF6FF',
-    borderColor: '#006BD6',
+    borderColor: '#0084FF',
   },
   pillEventText: {
     fontSize: 11,
@@ -1160,29 +1184,60 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   pillEventTextActive: {
-    color: '#006BD6',
+    color: '#0084FF',
     fontWeight: '800',
   },
-  pillTemplate: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+  badgeMetaApproved: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeMetaApprovedText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#16A34A',
+  },
+  templateMetaPill: {
+    padding: 10,
+    borderRadius: 8,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
-  pillTemplateActive: {
-    backgroundColor: '#0F172A',
-    borderColor: '#0F172A',
+  templateMetaPillActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#0084FF',
+    borderWidth: 1.5,
   },
-  pillTemplateText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  pillTemplateTextActive: {
-    color: '#FFFFFF',
+  templateMetaPillTitle: {
+    fontSize: 12,
     fontWeight: '700',
+    color: '#334155',
+  },
+  templateMetaPillTitleActive: {
+    color: '#0084FF',
+    fontWeight: '800',
+  },
+  templateMetaCategory: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  lockedTemplateBox: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 10,
+  },
+  lockedTemplateText: {
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 17,
   },
   previewContainer: {
     backgroundColor: '#EFEAE2',
@@ -1214,25 +1269,44 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  previewHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
   previewText: {
     fontSize: 12,
     color: '#111827',
     lineHeight: 17,
   },
+  previewFooterText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 6,
+  },
   previewButtonRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexWrap: 'wrap',
     gap: 6,
     paddingTop: 8,
     marginTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
+  previewBtnItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F0F9FF',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
   previewButtonText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#006BD6',
+    color: '#0084FF',
   },
   rowTest: {
     flexDirection: 'row',
@@ -1253,38 +1327,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#16A34A',
+    backgroundColor: '#0084FF',
     paddingVertical: 14,
     borderRadius: 10,
-    boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)',
+    boxShadow: '0 4px 12px rgba(0, 132, 255, 0.25)',
   },
   btnStartBroadcastText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.3,
-  },
-  progressBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#DCFCE7',
-  },
-  btnCtrl: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  btnCtrlText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

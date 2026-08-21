@@ -340,9 +340,8 @@ app.post('/api/meta/templates', async (req, res) => {
 // Disparo em Massa Oficial via Meta WhatsApp Cloud API
 app.post('/api/meta/send-template-broadcast', async (req, res) => {
   try {
-    const { recipients, template_name, language_code, components, event_id, campaign_title } = req.body;
+    const { recipients, template_name, language_code, event_id, campaign_title } = req.body;
 
-    // Busca credenciais da Meta no banco
     const configRes = await db.query('SELECT * FROM meta_api_config WHERE id = 1');
     const metaConfig = configRes.rows[0];
 
@@ -350,7 +349,11 @@ app.post('/api/meta/send-template-broadcast', async (req, res) => {
     const accessToken = metaConfig?.access_token;
     const apiVersion = metaConfig?.api_version || 'v20.0';
 
-    const hasMetaCredentials = Boolean(phoneNumberId && accessToken);
+    if (!phoneNumberId || !accessToken) {
+      return res.status(400).json({
+        error: 'Credenciais da Meta API não configuradas. Insira seu Phone Number ID e Access Token.',
+      });
+    }
 
     const results = [];
     let sentSuccess = 0;
@@ -362,79 +365,86 @@ app.post('/api/meta/send-template-broadcast', async (req, res) => {
         rawPhone = `55${rawPhone}`;
       }
 
-      if (hasMetaCredentials) {
-        // Envia via Meta Cloud API Oficial
-        try {
-          const metaUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
-          
-          // Formata parâmetros dinâmicos do corpo
-          const bodyParams = (rec.bodyParams || [rec.name || 'Cliente', rec.eventName || 'Evento', rec.eventLink || '']).map((val) => ({
-            type: 'text',
-            text: String(val || ''),
-          }));
+      try {
+        const metaUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+        
+        const templateComponents = [];
 
-          const metaPayload = {
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: rawPhone,
-            type: 'template',
-            template: {
-              name: template_name || 'fotos_evento_publicadas',
-              language: { code: language_code || 'pt_BR' },
-              components: [
-                {
-                  type: 'body',
-                  parameters: bodyParams,
-                },
-              ],
-            },
-          };
-
-          const metaRes = await fetch(metaUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(metaPayload),
+        // Header Imagem se presente
+        if (rec.headerImage) {
+          templateComponents.push({
+            type: 'header',
+            parameters: [
+              {
+                type: 'image',
+                image: { link: rec.headerImage },
+              },
+            ],
           });
-
-          const metaData = await metaRes.json();
-
-          if (metaRes.ok && metaData.messages?.[0]?.id) {
-            sentSuccess++;
-            results.push({ phone: rawPhone, status: 'sent', wamid: metaData.messages[0].id });
-          } else {
-            sentErrors++;
-            results.push({ phone: rawPhone, status: 'error', error: metaData.error?.message || 'Erro Meta API' });
-          }
-        } catch (callErr) {
-          sentErrors++;
-          results.push({ phone: rawPhone, status: 'error', error: callErr.message });
         }
-      } else {
-        // Simulação / Retorno para disparo assistido se ainda não inseriu o token
-        sentSuccess++;
-        results.push({ phone: rawPhone, status: 'ready_for_web', info: 'Modo direto / WhatsApp Web' });
+
+        // Body Parameters ({{1}}, {{2}}, {{3}})
+        if (rec.bodyParams && Array.isArray(rec.bodyParams) && rec.bodyParams.length > 0) {
+          templateComponents.push({
+            type: 'body',
+            parameters: rec.bodyParams.map((p) => ({
+              type: 'text',
+              text: String(p || ''),
+            })),
+          });
+        }
+
+        const metaPayload = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: rawPhone,
+          type: 'template',
+          template: {
+            name: template_name || 'fotos_evento_publicadas',
+            language: { code: language_code || 'pt_BR' },
+            components: templateComponents.length > 0 ? templateComponents : undefined,
+          },
+        };
+
+        const metaRes = await fetch(metaUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(metaPayload),
+        });
+
+        const metaData = await metaRes.json();
+
+        if (metaRes.ok && metaData.messages?.[0]?.id) {
+          sentSuccess++;
+          results.push({ phone: rawPhone, status: 'sent', wamid: metaData.messages[0].id });
+        } else {
+          sentErrors++;
+          results.push({ phone: rawPhone, status: 'error', error: metaData.error?.message || 'Erro Meta API' });
+        }
+      } catch (err) {
+        sentErrors++;
+        results.push({ phone: rawPhone, status: 'error', error: err.message });
       }
     }
 
-    // Registra campanha no banco
+    // Salva registro da campanha
     await db.query(`
       INSERT INTO broadcast_campaigns (title, message_template, event_id, total_recipients, sent_count, status)
       VALUES ($1, $2, $3, $4, $5, 'completed')
-    `, [campaign_title || 'Disparo Padrão Meta', template_name, event_id || null, recipients.length, sentSuccess]);
+    `, [campaign_title || 'Disparo Oficial Meta', template_name, event_id || null, recipients.length, sentSuccess]);
 
     res.json({
       success: true,
-      hasMetaCredentials,
       sentSuccess,
       sentErrors,
       results,
     });
   } catch (err) {
     console.error('Erro no broadcast Meta:', err);
-    res.status(500).json({ error: 'Erro ao processar disparo Meta' });
+    res.status(500).json({ error: 'Erro ao processar disparo Meta: ' + err.message });
   }
 });
 
