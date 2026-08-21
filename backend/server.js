@@ -207,6 +207,49 @@ app.delete('/api/leads/whatsapp/:id', async (req, res) => {
   }
 });
 
+
+// ─── DISPARADOR EM MASSA & CAMPANHAS WHATSAPP ────────────────────────────────
+
+// Salvar campanha de disparo realizada
+app.post('/api/broadcast/save-campaign', async (req, res) => {
+  try {
+    const { title, message_template, event_id, total_recipients, sent_count, logs } = req.body;
+
+    const result = await db.query(`
+      INSERT INTO broadcast_campaigns (title, message_template, event_id, total_recipients, sent_count, status)
+      VALUES ($1, $2, $3, $4, $5, 'completed')
+      RETURNING id;
+    `, [title || 'Disparo Rápido', message_template, event_id || null, total_recipients || 0, sent_count || 0]);
+
+    const campaignId = result.rows[0]?.id;
+
+    if (logs && Array.isArray(logs) && campaignId) {
+      for (const log of logs) {
+        await db.query(`
+          INSERT INTO broadcast_logs (campaign_id, phone, name, status)
+          VALUES ($1, $2, $3, $4)
+        `, [campaignId, log.phone, log.name || null, log.status || 'sent']);
+      }
+    }
+
+    res.json({ success: true, campaignId });
+  } catch (err) {
+    console.error('Erro ao salvar campanha de disparo:', err);
+    res.status(500).json({ error: 'Erro ao registrar campanha' });
+  }
+});
+
+// Listar campanhas anteriores
+app.get('/api/broadcast/campaigns', async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM broadcast_campaigns ORDER BY created_at DESC LIMIT 30');
+    res.json({ campaigns: result.rows });
+  } catch (err) {
+    console.error('Erro ao listar campanhas:', err);
+    res.status(500).json({ error: 'Erro ao buscar histórico de campanhas' });
+  }
+});
+
 // ─── SITEMAP & ROBOTS PARA O GOOGLE ──────────────────────────────────────────
 
 const generateSitemapXml = async () => {

@@ -62,6 +62,7 @@ const linking = {
       MinhasCompras: 'minhas-compras',
       Checkout: 'checkout',
       Admin: 'admin',
+      Disparador: 'disparador',
     },
   },
 };
@@ -338,7 +339,8 @@ const EventDetailsWrapped = withLayout(EventDetails);
 const CheckoutWrapped = withLayout(Checkout);
 const MinhasComprasWrapped = withLayout(MinhasCompras);
 const LocationEventsWrapped = withLayout(LocationEvents);
-const AdminWrapped = withLayout(AdminPanel, false); // Admin has its own clean topbar
+const AdminWrapped = withLayout(AdminPanel, false);
+const BulkMessageWrapped = withLayout(BulkMessage, false); // Admin has its own clean topbar
 
 // ─── APP PRINCIPAL ───────────────────────────────────────────────────────────
 function MainNavigation() {
@@ -384,6 +386,7 @@ function MainNavigation() {
         <Stack.Screen name="Checkout" component={CheckoutWrapped} />
         <Stack.Screen name="MinhasCompras" component={MinhasComprasWrapped} />
         <Stack.Screen name="Admin" component={AdminWrapped} />
+        <Stack.Screen name="Disparador" component={BulkMessageWrapped} />
       </Stack.Navigator>
     </NavigationContainer>
   );

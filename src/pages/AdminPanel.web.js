@@ -19,6 +19,7 @@ import {
   Globe,
   ScanFace,
   MessageCircle,
+  Flame,
   ShieldCheck,
   Users,
   Image as ImageIcon,
@@ -500,13 +501,34 @@ export default function AdminPanel() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.btnLogout}
-            onPress={logoutAdmin}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.btnLogoutText}>Sair</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                backgroundColor: '#EA580C',
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 8,
+              }}
+              onPress={() => navigation.navigate('Disparador')}
+              activeOpacity={0.85}
+            >
+              <Flame size={14} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                Disparador em Massa 🚀
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.btnLogout}
+              onPress={logoutAdmin}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.btnLogoutText}>Sair</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -711,14 +733,35 @@ export default function AdminPanel() {
                         Clientes que se cadastraram no rodapé da Home para receber fotos e avisos de novos eventos.
                       </Text>
                     </View>
-                    <TouchableOpacity
-                      style={[styles.btnActionSecondary, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
-                      onPress={exportLeadsToCsv}
-                      activeOpacity={0.8}
-                    >
-                      <Download size={14} color="var(--primary-color)" />
-                      <Text style={styles.btnActionSecondaryText}>Exportar CSV</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          backgroundColor: '#16A34A',
+                          paddingHorizontal: 12,
+                          paddingVertical: 7,
+                          borderRadius: 8,
+                        }}
+                        onPress={() => navigation.navigate('Disparador')}
+                        activeOpacity={0.85}
+                      >
+                        <Flame size={14} color="#FFFFFF" />
+                        <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>
+                          Abrir no Disparador 🚀
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.btnActionSecondary, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                        onPress={exportLeadsToCsv}
+                        activeOpacity={0.8}
+                      >
+                        <Download size={14} color="var(--primary-color)" />
+                        <Text style={styles.btnActionSecondaryText}>Exportar CSV</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   {loadingAnalytics ? (
