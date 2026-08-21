@@ -325,7 +325,7 @@ export default function Home() {
           </Text>
 
           {/* 4 Step Columns / 2x2 Grid on Mobile */}
-          <View style={[s.howStepsRow, isMobile && s.howStepsRowMobile]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.howStepsRow, isMobile && s.howStepsRowMobile]}>
             {/* Step 1 */}
             <View style={[s.howStepItem, isMobile && s.howStepItemMobile]}>
               <View style={[s.howStepCircle, { backgroundColor: `${primaryColor}15` }]}>
@@ -373,7 +373,7 @@ export default function Home() {
                 {config.howItWorks?.step4Desc || 'Após o pagamento receba seus arquivos direto no Whatsapp.'}
               </Text>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </View>
 
@@ -969,8 +969,11 @@ const s = StyleSheet.create({
     gap: 20,
   },
   howStepsRowMobile: {
-    flexDirection: 'column',
-    gap: 16,
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    gap: 12,
+    paddingBottom: 16,
+    paddingHorizontal: 8,
   },
   howStepItem: {
     flex: 1,
@@ -979,10 +982,11 @@ const s = StyleSheet.create({
     gap: 6,
   },
   howStepItemMobile: {
-    flexDirection: 'row',
-    textAlign: 'left',
+    width: 140, // fix width so they don't squish and scroll nicely
+    flexDirection: 'column',
+    textAlign: 'center',
     alignItems: 'center',
-    gap: 12,
+    gap: 4,
   },
   howStepCircle: {
     width: 44,
