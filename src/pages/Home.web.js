@@ -188,6 +188,22 @@ export default function Home() {
   return (
     <ScrollView style={s.page} contentContainerStyle={s.pageContent}>
       {/* ═════════════════════════════════════════════════════════════════════
+          1. HERO SECTION (Light Theme & White-Label)
+      ═════════════════════════════════════════════════════════════════════ */}
+      <View style={[s.hero, isMobile && s.heroMobile]}>
+        <View style={[s.heroInner, isMobile && s.heroInnerMobile]}>
+          {/* Left 45% Content */}
+          <View style={[s.heroLeft, isMobile && s.heroLeftMobile]}>
+            <Text style={[s.heroTitle, isMobile && s.heroTitleMobile]}>
+              {config.branding?.sloganHero || 'Sejam bem vindos. Rafael Publicado Audiovisual – Você primeiro aqui!'}
+            </Text>
+
+            <Text style={[s.heroSubtitle, isMobile && s.heroSubtitleMobile]}>
+              {config.branding?.subtitleHero ||
+                'Fotos profissionais dos melhores eventos esportivos e momentos especiais. Encontre-se, reviva e compartilhe.'}
+            </Text>
+
+      {/* ═════════════════════════════════════════════════════════════════════
           0. BANNER PROMOCIONAL CONFIGURÁVEL (Redirecionamento para Evento)
       ═════════════════════════════════════════════════════════════════════ */}
       {config.banners?.enableHeroPromoBanner && config.banners?.promoBanners?.map((banner, i) => (
@@ -237,21 +253,7 @@ export default function Home() {
         </View>
       ))}
 
-      {/* ═════════════════════════════════════════════════════════════════════
-          1. HERO SECTION (Light Theme & White-Label)
-      ═════════════════════════════════════════════════════════════════════ */}
-      <View style={[s.hero, isMobile && s.heroMobile]}>
-        <View style={[s.heroInner, isMobile && s.heroInnerMobile]}>
-          {/* Left 45% Content */}
-          <View style={[s.heroLeft, isMobile && s.heroLeftMobile]}>
-            <Text style={[s.heroTitle, isMobile && s.heroTitleMobile]}>
-              {config.branding?.sloganHero || 'Sejam bem vindos. Rafael Publicado Audiovisual – Você primeiro aqui!'}
-            </Text>
 
-            <Text style={[s.heroSubtitle, isMobile && s.heroSubtitleMobile]}>
-              {config.branding?.subtitleHero ||
-                'Fotos profissionais dos melhores eventos esportivos e momentos especiais. Encontre-se, reviva e compartilhe.'}
-            </Text>
 
             {/* Fotógrafos Ativos na Vitrine */}
             {activePhotographers.length > 1 && (
@@ -703,16 +705,17 @@ const s = StyleSheet.create({
 
   // Promo Banner
   promoBannerWrapper: {
-    maxWidth: Layout.containerXl,
-    alignSelf: 'center',
     width: '100%',
-    paddingHorizontal: Layout.desktopPadding,
-    paddingTop: 16,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
   promoBannerCard: {
-    borderRadius: Radius.lg,
-    padding: 16,
-    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    minHeight: 120,
+    justifyContent: 'center',
   },
   promoBannerContent: {
     flexDirection: 'row',
@@ -743,25 +746,11 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
   },
   promoBannerTitle: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '800',
   },
   promoBannerSubtitle: {
-    color: '#E2E8F0',
-    fontSize: 12,
-  },
-  btnPromoAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  btnPromoActionText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
   },
 
