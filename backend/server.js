@@ -957,12 +957,12 @@ app.get('/api/crm/campaigns', async (req, res) => {
 
 app.post('/api/crm/campaigns', async (req, res) => {
   try {
-    const { name, list_id, template_name, template_language, event_id } = req.body;
+    const { name, list_id, template_name, template_language, event_id, template_params } = req.body;
     if (!name) return res.status(400).json({ error: 'Nome obrigatório' });
     const result = await db.query(
-      `INSERT INTO crm_campaigns (name, list_id, template_name, template_language, event_id, status)
-       VALUES ($1, $2, $3, $4, $5, 'draft') RETURNING *`,
-      [name, list_id || null, template_name || '', template_language || 'pt_BR', event_id || null]
+      `INSERT INTO crm_campaigns (name, list_id, template_name, template_language, event_id, status, template_params)
+       VALUES ($1, $2, $3, $4, $5, 'draft', $6) RETURNING *`,
+      [name, list_id || null, template_name || '', template_language || 'pt_BR', event_id || null, JSON.stringify(template_params || [])]
     );
     res.json({ campaign: result.rows[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -970,11 +970,11 @@ app.post('/api/crm/campaigns', async (req, res) => {
 
 app.put('/api/crm/campaigns/:id', async (req, res) => {
   try {
-    const { name, list_id, template_name, template_language, event_id } = req.body;
+    const { name, list_id, template_name, template_language, event_id, template_params } = req.body;
     const result = await db.query(
-      `UPDATE crm_campaigns SET name=$1, list_id=$2, template_name=$3, template_language=$4, event_id=$5
-       WHERE id=$6 RETURNING *`,
-      [name, list_id || null, template_name || '', template_language || 'pt_BR', event_id || null, req.params.id]
+      `UPDATE crm_campaigns SET name=$1, list_id=$2, template_name=$3, template_language=$4, event_id=$5, template_params=$6
+       WHERE id=$7 RETURNING *`,
+      [name, list_id || null, template_name || '', template_language || 'pt_BR', event_id || null, JSON.stringify(template_params || []), req.params.id]
     );
     res.json({ campaign: result.rows[0] });
   } catch (err) { res.status(500).json({ error: err.message }); }
