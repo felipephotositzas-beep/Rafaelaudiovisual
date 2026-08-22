@@ -1049,11 +1049,13 @@ app.post('/api/crm/campaigns/:id/launch', async (req, res) => {
         template: {
           name: campaign.template_name,
           language: { code: campaign.template_language || 'pt_BR' },
-          components: [{ type: 'body', parameters: [
-            { type: 'text', text: contact.name || 'Cliente' },
-            { type: 'text', text: eventName },
-            { type: 'text', text: eventLink },
-          ]}],
+          components: [{ type: 'body', parameters: 
+            (campaign.template_params || []).map(p => {
+               let val = p;
+               if (val === '{nome_cliente}') val = contact.name || 'Cliente';
+               return { type: 'text', text: val || ' ' };
+            })
+          }],
         },
       };
 

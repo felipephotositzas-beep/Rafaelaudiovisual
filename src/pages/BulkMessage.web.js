@@ -100,12 +100,17 @@ export default function BulkMessage() {
   const [campaigns, setCampaigns] = useState([]);
   const [loadingCamps, setLoadingCamps] = useState(false);
   const [showNewCamp, setShowNewCamp] = useState(false);
-  const [campForm, setCampForm] = useState({ name:'', list_id:'', template_name:'', event_id:'' });
+  const [campForm, setCampForm] = useState({ name:'', list_id:'', template_name:'', event_id:'', template_params:[] });
   const [savingCamp, setSavingCamp] = useState(false);
   const [selectedCamp, setSelectedCamp] = useState(null);
   const [campLogs, setCampLogs] = useState([]);
   const [launchingId, setLaunchingId] = useState(null);
   const [editingCamp, setEditingCamp] = useState(null);
+  const handleParamChange = (idx, val) => {
+    const newParams = [...(campForm.template_params || [])];
+    newParams[idx] = val;
+    setCampForm(f => ({...f, template_params: newParams}));
+  };
 
   // ── Contacts ──
   const [contacts, setContacts] = useState([]);
@@ -262,6 +267,7 @@ export default function BulkMessage() {
         body: JSON.stringify({
           name: campForm.name, list_id: (campForm.list_id && lists.find(l => String(l.id) === String(campForm.list_id))) ? campForm.list_id : null,
           template_name: campForm.template_name, template_language: 'pt_BR', event_id: campForm.event_id || null,
+          template_params: campForm.template_params || [],
         }),
       });
       const d = await res.json();
@@ -562,6 +568,41 @@ export default function BulkMessage() {
                   </TouchableOpacity>
                 ))}
               </View>
+              
+              {/* VARIAVEIS DO TEMPLATE */}
+              {campForm.template_name && (() => {
+                const sel = metaTemplates.find(x => x.name === campForm.template_name);
+                if (!sel) return null;
+                const matches = sel.body_text.match(/\{\{\d+\}\}/g) || [];
+                const varCount = matches.length;
+                if (varCount === 0) return null;
+                
+                return (
+                  <View style={{ marginBottom: 20, backgroundColor: '#F8FAFC', padding: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 12 }}>Preencha as Variáveis do Template:</Text>
+                    {Array.from({ length: varCount }).map((_, i) => (
+                      <View key={i} style={{ marginBottom: 10 }}>
+                        <Text style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>Variável {{{{ {i+1} }}}}</Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TextInput 
+                            style={[s.input, { flex: 1, marginBottom: 0 }]} 
+                            placeholder="Ex: Nome do Evento ou {nome_cliente}" 
+                            value={(campForm.template_params || [])[i] || ''}
+                            onChangeText={(val) => handleParamChange(i, val)}
+                          />
+                          <TouchableOpacity 
+                            style={{ backgroundColor: '#E0F2FE', paddingHorizontal: 12, justifyContent: 'center', borderRadius: 8 }}
+                            onPress={() => handleParamChange(i, '{nome_cliente}')}
+                          >
+                            <Text style={{ fontSize: 11, color: '#0284C7', fontWeight: '700' }}>+ NOME</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                    <Text style={{ fontSize: 11, color: '#64748B', marginTop: 8 }}>Dica: Clique em "+ NOME" para que o sistema troque automaticamente pelo nome de cada contato na hora de enviar.</Text>
+                  </View>
+                );
+              })()}
 
               <View style={{ flexDirection:'row', gap:8, marginTop: 20 }}>
                 <TouchableOpacity style={[s.btnPrimary, { flex:1, justifyContent:'center', paddingVertical:14, backgroundColor: '#0084FF' }]} onPress={handleCreateCampaign} disabled={savingCamp}>
