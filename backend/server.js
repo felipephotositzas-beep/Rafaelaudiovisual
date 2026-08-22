@@ -267,7 +267,9 @@ app.post('/api/meta/config', async (req, res) => {
   try {
     const { phone_number_id, waba_id, access_token, api_version } = req.body;
     
-    if (access_token) {
+    let isFakeToken = (access_token === 'TOKEN_SALVO_NO_BANCO_DE_DADOS' || access_token === '********************************');
+    
+    if (access_token && !isFakeToken) {
       await db.query(`
         INSERT INTO meta_api_config (id, phone_number_id, waba_id, access_token, api_version, updated_at)
         VALUES (1, $1, $2, $3, $4, NOW())
@@ -290,11 +292,18 @@ app.post('/api/meta/config', async (req, res) => {
       `, [phone_number_id || '', waba_id || '', api_version || 'v20.0']);
     }
 
+    // Puxa o token real do banco caso tenha recebido o fake
+    let realTokenToUse = access_token;
+    if (!realTokenToUse || isFakeToken) {
+       const dbRes = await db.query('SELECT access_token FROM meta_api_config WHERE id = 1');
+       realTokenToUse = dbRes.rows[0]?.access_token;
+    }
+
     // Tenta sincronizar automaticamente após salvar
     let syncInfo = '';
-    if (waba_id && access_token) {
+    if (waba_id && realTokenToUse) {
       try {
-        const syncRes = await syncTemplatesFromMeta(waba_id, access_token, api_version || 'v20.0');
+        const syncRes = await syncTemplatesFromMeta(waba_id, realTokenToUse, api_version || 'v20.0');
         syncInfo = ` Sincronizados ${syncRes.total} modelos da Meta!`;
       } catch (sErr) {
         console.warn('Auto-sync aviso:', sErr.message);

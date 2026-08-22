@@ -165,7 +165,10 @@ export default function BulkMessage() {
           setWabaId(d.config.waba_id || '');
           const ok = Boolean(d.config.has_token);
           setHasMetaApi(ok);
-          if (ok) fetchMetaTemplates();
+          if (ok) {
+            setMetaToken('********************************');
+            fetchMetaTemplates();
+          }
         }
       }
     } catch {}
@@ -237,7 +240,7 @@ export default function BulkMessage() {
     try {
       const res = await fetch(`${API}/meta/sync-templates`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ waba_id: wid || wabaId, access_token: tok || metaToken }),
+        body: JSON.stringify({ waba_id: wid || wabaId, access_token: (tok || metaToken) === '********************************' ? null : (tok || metaToken) }),
       });
       const d = await res.json();
       if (res.ok && d.templates?.length > 0) {
