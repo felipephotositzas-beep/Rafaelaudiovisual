@@ -48,7 +48,7 @@
     "android": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start --android",
     "ios": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start --ios",
     "web": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 expo start --web",
-    "build": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 npx expo export -p web"
+    "build": "EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK=1 npx expo export -p web && node generate_seo.js"
   },
   "private": true
 }
