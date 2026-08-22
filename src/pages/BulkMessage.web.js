@@ -582,7 +582,7 @@ export default function BulkMessage() {
                     <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A', marginBottom: 12 }}>Preencha as Variáveis do Template:</Text>
                     {Array.from({ length: varCount }).map((_, i) => (
                       <View key={i} style={{ marginBottom: 10 }}>
-                        <Text style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>Variável {{{{ {i+1} }}}}</Text>
+                        <Text style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>Variável {'{{' + (i+1) + '}}'}</Text>
                         <View style={{ flexDirection: 'row', gap: 8 }}>
                           <TextInput 
                             style={[s.input, { flex: 1, marginBottom: 0 }]} 
